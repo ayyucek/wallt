@@ -35,7 +35,8 @@ Bankasına veri paylaşmak istemeyen, ama harcama alışkanlığını kategori v
 | Otomatik makbuz/fiş tarama (OCR) | Sektörde standart (Spendee) ama v1'in manuel-first felsefesiyle çelişmiyor |
 | Ortak cüzdan / paylaşımlı bütçe | v1 tek kullanıcı odaklı |
 | Bildirim/hatırlatma sistemi | v2'ye ertelendi |
-| Kullanıcı hesabı / bulut senkronizasyonu | v1 local-first (bkz. Bölüm 10) |
+
+> **Not (5 Eylül 2026 revizyonu):** "Kullanıcı hesabı / bulut senkronizasyonu" önceki taslakta burada v2'ye ertelenmiş bir kapsam dışı öğesiydi. PM kararıyla v1 kapsamına alındı — email+şifre girişi ve Supabase ile veri saklama artık v1'in bir parçası (bkz. Bölüm 5.5 ve Bölüm 10).
 
 ## 5. Fonksiyonel Gereksinimler
 
@@ -75,6 +76,14 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 - Seçili aralık, toplam tutarın altında küçük bir etiket olarak her zaman görünür kalır (örn. "1 Eyl – 2 Eyl 2026")
 - Hızlı seçim kısayolları: Bu Hafta / Geçen Hafta / Bu Ay / Geçen Ay
 - Seçilen aralık için tüm grafik tipleri (bar, pie, pareto) filtrelenir
+
+### 5.5 Kimlik Doğrulama
+
+- Kullanıcı, **email + şifre** ile kayıt olur ve giriş yapar (Supabase Auth üzerinden)
+- Oturum açılmadan uygulamanın geri kalanına erişilemez — ilk açılışta giriş/kayıt ekranı gösterilir
+- Oturum durumu tarayıcıda kalıcıdır (Supabase session); sayfa yenilendiğinde kullanıcı tekrar giriş yapmak zorunda kalmaz
+- Şifremi unuttum akışı, Supabase'in hazır e-posta linkiyle desteklenir — v1 kapsamında ayrı bir ekran tasarımı gerektirmez
+- Tüm harcama/tasarruf/kategori verisi kullanıcı hesabına bağlıdır; bir kullanıcı yalnızca kendi verisini görür (bkz. Bölüm 10)
 
 ## 6. Bilgi Mimarisi ve Navigasyon (Mobil-First)
 
@@ -127,7 +136,13 @@ WALLT, **web-first** bir ürün olarak geliştirilecek ve geliştirme süreci **
 
 ## 10. Veri Kalıcılığı
 
-v1 için veri saklama stratejisi **local-first**'tir: kullanıcı verisi kullanıcı hesabı veya bulut senkronizasyonu olmadan, doğrudan tarayıcıda (IndexedDB) saklanır. Bu tercih, v1'i hızlı teslim edebilmek ve kullanıcı hesabı/kimlik doğrulama karmaşıklığından kaçınmak için yapılmıştır. Riski ve telafisi Bölüm 13'te not edilmiştir; kullanıcı hesabı ve bulut senkronizasyonuna geçiş v2 kapsamındadır (bkz. Bölüm 14 Faz Planı).
+**Revizyon (5 Eylül 2026):** v1'in ilk taslağında burada local-first (IndexedDB, kullanıcı hesabı yok) bir strateji tanımlıydı. PM kararıyla bu strateji değişti: v1 artık **Supabase** (Postgres + Auth) üzerinden **cloud-first**'tir.
+
+- Kullanıcı email+şifre ile hesap oluşturur (bkz. Bölüm 5.5); tüm harcama, tasarruf ve custom kategori verisi bu hesaba bağlı olarak Supabase'de saklanır
+- **Row Level Security (RLS):** Supabase tarafında her tabloya, kullanıcının yalnızca kendi `user_id`'sine ait satırları görebildiği/yazabildiği RLS politikaları tanımlanır — istemci kodunun kullanıcı filtrelemesini elle yapmasına gerek kalmaz
+- Bu değişiklik, önceki taslakta Bölüm 13'te not edilen "cihaz değiştirince veri kaybı" riskini ortadan kaldırır — veri artık cihaza değil hesaba bağlıdır
+- Offline kullanım desteklenmez (v1 kapsamı dışı) — uygulama internet bağlantısı gerektirir
+- Kullanıcı hesabı ve bulut senkronizasyonuna geçiş artık v2'yi değil, **v1'in kendisini** kapsıyor (bkz. Bölüm 14 Faz Planı)
 
 ## 11. PWA ve Dağıtım
 
@@ -141,8 +156,8 @@ WALLT, bir Progressive Web App (PWA) olarak paketlenir; böylece kullanıcı tar
 |---|---|---|
 | 1 | Kategori rengi custom kategorilerde nasıl atanacak? | ✅ Çözüldü — sabit bir palet dizisinden sırayla atama (bkz. Teknik Analiz Bölüm 4) |
 | 2 | Dönem karşılaştırmada pie chart overplot nasıl çözülecek? | ✅ Çözüldü — iç içe halka (Dönem A iç, Dönem B dış) |
-| 3 | Veri nerede saklanacak — local mı, cloud mu? | ⏳ Açık — v1 için local-first (IndexedDB) önerisi var, kesinleşmedi |
-| 4 | Offline kullanım desteklenecek mi? | ⏳ Açık |
+| 3 | Veri nerede saklanacak — local mı, cloud mu? | ✅ Çözüldü — Supabase (cloud), kullanıcı hesabına bağlı (bkz. Bölüm 10) |
+| 4 | Offline kullanım desteklenecek mi? | ✅ Çözüldü — Hayır, v1 kapsamında değil (Supabase internet bağlantısı gerektirir) |
 | 5 | Zaman dilimi (timezone) sınır durumları nasıl ele alınacak? | ⏳ Açık — Teknik Analiz Dokümanı'nda risk olarak işaretlendi |
 | 6 | PDF export hangi teknik yolla üretilecek? | ⏳ Açık — `window.print()` vs. `@react-pdf/renderer` |
 | 7 | Genel Bakış / İstatistikler ayrı route mu, tek sayfa client state mi? | ⏳ Açık — v1 için tek sayfa öneriliyor |
@@ -151,16 +166,19 @@ WALLT, bir Progressive Web App (PWA) olarak paketlenir; böylece kullanıcı tar
 
 - Manuel giriş modeli, kullanıcı disiplinine bağımlı — düşük "adherence" riski
 - Pareto/histogram gibi ileri analiz özellikleri ortalama kullanıcı için karmaşık gelebilir — onboarding'de basit tutulmalı
-- Local-first kalıcılık tercih edilirse, kullanıcı cihaz değiştirdiğinde veri kaybı riski vardır — bu risk v1 lansmanında kullanıcıya açıkça belirtilmeli
+- ~~Local-first kalıcılık tercih edilirse, kullanıcı cihaz değiştirdiğinde veri kaybı riski vardır~~ — Bölüm 10'daki Supabase kararıyla bu risk ortadan kalktı
+- **Yeni risk (Supabase kararıyla geldi):** Uygulama artık internet bağlantısı zorunlu kılıyor; hedef kullanıcı profili "mobil, her yerde hızlı giriş" olduğundan (Bölüm 3) zayıf bağlantılı ortamlarda giriş/kayıt sürtünmesi kullanıcı deneyimini etkileyebilir — launch öncesi değerlendirilmeli
 
 ## 14. Faz Planı
 
 | Faz | Kapsam | Platform |
 |---|---|---|
-| MVP (v1) | Manuel giriş (modal), hybrid kategori, bar/pie/pareto chart, PDF export, paylaş butonu, mobil-first navigasyon | Web (Next.js), PWA desteğiyle |
+| MVP (v1) | Manuel giriş (modal), hybrid kategori, bar/pie/pareto/radar chart, tasarruf takibi, **email+şifre ile kimlik doğrulama ve Supabase ile bulut tabanlı veri saklama**, PDF export, paylaş butonu, mobil-first navigasyon | Web (Next.js), PWA desteğiyle |
 | v1.1 | İstatistikler ekranı — üç grafikte de dönem overplot | Web |
-| v2 | Local-first kalıcılıktan kullanıcı hesabı + bulut senkronizasyonuna geçiş, bildirimler | Web |
+| v2 | Bildirimler/hatırlatma sistemi | Web |
 | v3 | Native geçiş tetikleyicilerinden biri gerçekleştiğinde: React Native/Expo (EAS Build) ile iOS + Android | Native (RN/Expo) |
 | v4+ | Open banking değerlendirmesi, ortak cüzdan | Native |
 
-Uygulama içi build fazları (kod seviyesinde) için **Teknik Analiz Dokümanı Bölüm 6**'daki 10 fazlık plana bakınız.
+> **Not:** Kullanıcı hesabı + bulut senkronizasyonu önceki taslakta v2'ye planlanmıştı; PM kararıyla v1'e alındı (bkz. Bölüm 10).
+
+Uygulama içi build fazları (kod seviyesinde) için **Teknik Analiz Dokümanı Bölüm 6**'daki 11 fazlık plana bakınız.
