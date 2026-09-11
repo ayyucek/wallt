@@ -7,6 +7,7 @@ import BottomTabBar, { type TabKey } from "@/components/layout/BottomTabBar";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomSheet from "@/components/sheets/BottomSheet";
 import AddExpenseSheet from "@/components/sheets/AddExpenseSheet";
+import DateRangeSheet from "@/components/sheets/DateRangeSheet";
 import Toast from "@/components/ui/Toast";
 import HeroTotal from "@/components/genel/HeroTotal";
 import SavingsSummaryCard from "@/components/genel/SavingsSummaryCard";
@@ -22,8 +23,10 @@ import {
   isExpense,
   isSaving,
   paretoData,
+  quickRange,
   radarData,
   withSavingsBar,
+  type QuickRangeKey,
 } from "@/lib/calculations";
 import { formatCurrency, formatRangeLabel } from "@/lib/format";
 import { addCategory, addTransaction, fetchCategories, fetchTransactions } from "@/lib/storage";
@@ -95,8 +98,14 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const [rangeStart] = useState(thisMonthStartStr);
-  const [rangeEnd] = useState(todayStr);
+  const [rangeStart, setRangeStart] = useState(thisMonthStartStr);
+  const [rangeEnd, setRangeEnd] = useState(todayStr);
+
+  function handleQuickRange(preset: QuickRangeKey) {
+    const range = quickRange(preset);
+    setRangeStart(range.start);
+    setRangeEnd(range.end);
+  }
 
   const filtered = useMemo(
     () => filterByRange(transactions, rangeStart, rangeEnd),
@@ -243,7 +252,14 @@ export default function Home() {
       </BottomSheet>
 
       <BottomSheet open={rangeSheetOpen} onClose={() => setRangeSheetOpen(false)} title="Zaman Aralığı">
-        <p className="text-sm text-muted">Filtre içeriği Faz 5&apos;te eklenecek.</p>
+        <DateRangeSheet
+          start={rangeStart}
+          end={rangeEnd}
+          onStartChange={setRangeStart}
+          onEndChange={setRangeEnd}
+          onQuickSelect={handleQuickRange}
+          onClose={() => setRangeSheetOpen(false)}
+        />
       </BottomSheet>
     </>
   );

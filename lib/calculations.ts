@@ -1,5 +1,5 @@
 import { SAVING_COLOR } from "./categories";
-import type { Category, CategoryTotal, ParetoEntry, RadarEntry, Transaction } from "./types";
+import type { Category, CategoryTotal, DateRange, ParetoEntry, RadarEntry, Transaction } from "./types";
 
 export function isExpense(t: Transaction): boolean {
   return t.type !== "saving";
@@ -94,4 +94,58 @@ export function withSavingsBar(
       isSaving: true,
     },
   ];
+}
+
+export type QuickRangeKey = "week" | "lastweek" | "month" | "lastmonth";
+
+function addDays(d: Date, n: number): Date {
+  const c = new Date(d);
+  c.setDate(c.getDate() + n);
+  return c;
+}
+
+// Hafta Pazartesi başlar (TR konvansiyonu): Pazar (0) için 6 gün geri git,
+// diğer günler için haftanın başındaki Pazartesi'ye kadar geri git.
+function startOfWeek(d: Date): Date {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  return addDays(d, diff);
+}
+
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function endOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+
+function toISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// DateRangeSheet'teki hızlı seçim kısayolları (PRD 5.4): Bu Hafta / Geçen
+// Hafta / Bu Ay / Geçen Ay. `today` test edilebilirlik için parametrik.
+export function quickRange(key: QuickRangeKey, today: Date = new Date()): DateRange {
+  const todayStr = toISODate(today);
+  switch (key) {
+    case "week":
+      return { start: toISODate(startOfWeek(today)), end: todayStr, label: "Bu Hafta" };
+    case "lastweek":
+      return {
+        start: toISODate(addDays(startOfWeek(today), -7)),
+        end: toISODate(addDays(startOfWeek(today), -1)),
+        label: "Geçen Hafta",
+      };
+    case "month":
+      return { start: toISODate(startOfMonth(today)), end: todayStr, label: "Bu Ay" };
+    case "lastmonth": {
+      const prevMonthAnchor = addDays(startOfMonth(today), -1);
+      return {
+        start: toISODate(startOfMonth(prevMonthAnchor)),
+        end: toISODate(endOfMonth(prevMonthAnchor)),
+        label: "Geçen Ay",
+      };
+    }
+  }
 }

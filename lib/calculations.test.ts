@@ -5,6 +5,7 @@ import {
   isExpense,
   isSaving,
   paretoData,
+  quickRange,
   radarData,
   txDateStr,
   withSavingsBar,
@@ -153,5 +154,47 @@ describe("withSavingsBar", () => {
       total: 250,
       isSaving: true,
     });
+  });
+});
+
+// Sabit referans: 14 Ocak 2026 — bir Çarşamba.
+const REFERENCE_TODAY = new Date(2026, 0, 14);
+
+describe("quickRange", () => {
+  it("'week': haftanın Pazartesi'sinden bugüne", () => {
+    expect(quickRange("week", REFERENCE_TODAY)).toEqual({
+      start: "2026-01-12",
+      end: "2026-01-14",
+      label: "Bu Hafta",
+    });
+  });
+
+  it("'lastweek': geçen hafta Pazartesi'den Pazar'a", () => {
+    expect(quickRange("lastweek", REFERENCE_TODAY)).toEqual({
+      start: "2026-01-05",
+      end: "2026-01-11",
+      label: "Geçen Hafta",
+    });
+  });
+
+  it("'month': ayın 1'inden bugüne", () => {
+    expect(quickRange("month", REFERENCE_TODAY)).toEqual({
+      start: "2026-01-01",
+      end: "2026-01-14",
+      label: "Bu Ay",
+    });
+  });
+
+  it("'lastmonth': geçen ayın tamamı (yıl sınırını da doğru geçer)", () => {
+    expect(quickRange("lastmonth", REFERENCE_TODAY)).toEqual({
+      start: "2025-12-01",
+      end: "2025-12-31",
+      label: "Geçen Ay",
+    });
+  });
+
+  it("'week': Pazar günü de doğru haftaya (bir önceki Pazartesi) düşer", () => {
+    const sunday = new Date(2026, 0, 18); // 18 Ocak 2026 — Pazar
+    expect(quickRange("week", sunday).start).toBe("2026-01-12");
   });
 });
