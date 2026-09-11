@@ -1,13 +1,55 @@
+"use client";
+
+import { useState } from "react";
+import TopBar from "@/components/layout/TopBar";
+import BottomTabBar, { type TabKey } from "@/components/layout/BottomTabBar";
+import BottomSheet from "@/components/sheets/BottomSheet";
+
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<TabKey>("genel");
+  const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [exportSheetOpen, setExportSheetOpen] = useState(false);
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-      <div className="w-full max-w-sm rounded-card bg-card p-8 text-center shadow-card">
-        <h1 className="font-display text-4xl font-bold text-ink">WALLT</h1>
-        <p className="mt-2 text-sm text-muted">Faz 0 — kurulum tamamlandı</p>
-        <button className="mt-6 rounded-pill bg-category-yemek px-6 py-3 font-sans text-sm font-medium text-white shadow-btn-primary">
-          Harcama Ekle
-        </button>
-      </div>
-    </div>
+    <>
+      <TopBar
+        onExportClick={() => setExportSheetOpen(true)}
+        onShareClick={() => {}}
+      />
+
+      <main className="flex-1 overflow-y-auto px-4 pb-28">
+        {activeTab === "genel" ? (
+          <p className="mt-10 text-center text-sm text-muted">
+            Genel Bakış — içerik Faz 3&apos;te eklenecek
+          </p>
+        ) : (
+          <p className="mt-10 text-center text-sm text-muted">
+            İstatistikler — içerik Faz 6&apos;da eklenecek
+          </p>
+        )}
+      </main>
+
+      <BottomTabBar
+        active={activeTab}
+        onTabChange={setActiveTab}
+        onAddClick={() => setAddSheetOpen(true)}
+      />
+
+      <BottomSheet
+        open={addSheetOpen}
+        onClose={() => setAddSheetOpen(false)}
+        title="Harcama Ekle"
+      >
+        <p className="text-sm text-muted">Form içeriği Faz 4&apos;te eklenecek.</p>
+      </BottomSheet>
+
+      <BottomSheet
+        open={exportSheetOpen}
+        onClose={() => setExportSheetOpen(false)}
+        title="Rapor Önizleme"
+      >
+        <p className="text-sm text-muted">İçerik Faz 8&apos;de eklenecek.</p>
+      </BottomSheet>
+    </>
   );
 }
