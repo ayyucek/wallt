@@ -20,6 +20,7 @@ Bu dokümanı Claude Code'a (veya başka bir AI kodlama aracına) proje başlang
 | State yönetimi | **React hooks (useState/useMemo/useContext)** | v1 kapsamı için Redux/Zustand gereksiz karmaşıklık; veri büyürse Zustand'a geçiş kolay |
 | Kimlik Doğrulama & Kalıcılık | **Supabase** (Postgres + Auth, `@supabase/supabase-js` + `@supabase/ssr`) | Email+şifre girişi ve bulut tabanlı veri saklama v1 kapsamına alındı (5 Eylül 2026 revizyonu, bkz. PRD Bölüm 5.5/10); RLS (Row Level Security) ile her kullanıcı yalnızca kendi verisini görür/yazar, ayrı bir backend yazmaya gerek kalmaz |
 | Form/Tarih | Native HTML input (`date`, `datetime-local`) | Prototipte test edildi, ek kütüphane gerektirmiyor |
+| PDF Export | **`@react-pdf/renderer`** | Gerçek, indirilebilir/paylaşılabilir bir `.pdf` dosyası üretir (11 Eylül 2026 revizyonu — `window.print()` değil, bkz. Bölüm 9) |
 | PWA | `next-pwa` paketi | "Ana ekrana ekle" deneyimi için (PRD Bölüm 11.1) |
 
 **Not:** Bu tercihler PRD'nin "Teknik Yaklaşım" bölümündeki web-first + AI-destekli geliştirme kararıyla uyumludur. Native geçiş (React Native/Expo) bu doküman kapsamında değildir; v3 fazında ayrı bir doküman olarak ele alınmalıdır.
@@ -50,7 +51,9 @@ wallt/
 │   │   ├── BottomSheet.tsx       # ortak sheet wrapper (grabber, animasyon, overlay)
 │   │   ├── AddExpenseSheet.tsx
 │   │   ├── DateRangeSheet.tsx
-│   │   └── ExportSheet.tsx
+│   │   └── ExportSheet.tsx        # Rapor Önizleme + İndir/Paylaş butonları
+│   ├── pdf/
+│   │   └── ReportDocument.tsx     # @react-pdf/renderer döküman tanımı (Faz 9)
 │   ├── genel/
 │   │   ├── HeroTotal.tsx
 │   │   ├── CategoryBarChart.tsx
@@ -224,6 +227,8 @@ borderRadius: {
 | Dönem A/B kartları | `PeriodPicker.tsx` | `which: "A" \| "B"` prop'u ile iki kez render edilir |
 | İç içe halkalar | `ComparePieChart.tsx` | İki `<Pie>` bileşeni tek `PieChart` içinde |
 | Alt tab bar + FAB | `BottomTabBar.tsx` + `Fab.tsx` | FAB, tab bar'ın ortasındaki slot içinde `position:absolute` ile yükseltilir; `lg`'den itibaren `Sidebar.tsx` lehine gizlenir (bkz. 5.1) |
+| Export sheet'i / Rapor Önizleme | `ExportSheet.tsx` | `BottomSheet` wrapper'ını kullanır; kategori kırılımı + toplamı gösterir (Genel Bakış'ta o an seçili tarih aralığı için), İndir/Paylaş butonları `ReportDocument.tsx`'ten üretilen PDF'i tetikler (11 Eylül 2026 revizyonu, bkz. Bölüm 9) |
+| — (prototipte karşılığı yok) | `pdf/ReportDocument.tsx` | `@react-pdf/renderer` döküman tanımı; sadece kendi `StyleSheet.create()`'ini kullanır, Tailwind sınıfı kabul etmez (BarChart/PieChart bileşenlerinin `lib/chartTheme.ts` ile aynı deseni) |
 
 **Önemli mimari kural:** `page.tsx` tek "akıllı" (state tutan) bileşen olmalı; `components/` altındaki her şey mümkün olduğunca "aptal" (sadece prop alan, kendi state'i olmayan) bileşen olmalı. Bu, prototipte tek dosyada yönetilen state'in gerçek projede dağılıp kaybolmasını önler ve AI'nin hangi bileşenin neyi bildiğini takip etmesini kolaylaştırır.
 
@@ -261,7 +266,7 @@ Her faz, tek başına çalışır bir uygulama üretmeli — yani Faz 2 bitince 
 7. **Faz 6 — İstatistikler sekmesi:** `PeriodPicker` ×2, üç karşılaştırma grafiği, fark yüzdesi hesaplaması.
 8. **Faz 7 — Kimlik Doğrulama (YENİ, 5 Eylül 2026 revizyonu):** Supabase projesi kurulumu, `@supabase/supabase-js` + `@supabase/ssr` entegrasyonu, `lib/supabaseClient.ts`; giriş/kayıt ekranları (email+şifre); session yönetimi ve route/erişim koruması — oturum yoksa uygulamanın geri kalanı gösterilmez. Bu fazın sonunda uygulama hâlâ `lib/seed.ts` mock verisiyle çalışabilir; gerçek veri bağlanması Faz 8'de.
 9. **Faz 8 — Kalıcılık (Supabase):** `lib/storage.ts` ile Supabase Postgres entegrasyonu (eskiden IndexedDB planlanıyordu, bkz. Bölüm 1 revizyon notu); `transactions`/`categories` tabloları + RLS politikaları; mock seed verisinin yerini giriş yapan kullanıcının gerçek verisi alır. Sayfa yenilenince veri kaybolmamalı.
-10. **Faz 9 — Export:** `ExportSheet` içeriği + gerçek PDF üretimi (öneri: `@react-pdf/renderer` ya da tarayıcı `window.print()` ile bir print-friendly CSS — ikincisi daha az bağımlılık gerektirir, v1 için önerilir).
+10. **Faz 9 — Export (11 Eylül 2026 revizyonu — gerçek PDF kararı):** `ExportSheet` içeriği (Rapor Önizleme — kategori kırılımı + toplam, Genel Bakış'ta o an seçili tarih aralığı için); `@react-pdf/renderer` ile `components/pdf/ReportDocument.tsx` PDF döküman tanımı (Inter fontu gerçek `.ttf` dosyasından `Font.register()` ile yüklenir — react-pdf tarayıcının CSS/font motorunu kullanmaz); **İndir** butonu (PDF blob'u üretip tarayıcı indirmesini tetikler) ve **Paylaş** butonu (Web Share API ile dosya paylaşımı destekleniyorsa native share sheet açar, desteklenmiyorsa İndir'e düşer).
 11. **Faz 10 — PWA + cila:** `next-pwa` kurulumu, manifest.json, ikonlar, iOS "ana ekrana ekle" onboarding ipucu.
 
 **Faz 7'nin neden burada olduğu:** Auth'u daha erken (ör. Faz 0/1) sokmak, Faz 3-6'nın tamamını (seed veriyle çalışan UI) gereksiz yere kimlik doğrulama akışının arkasına kilitlerdi ve o fazlarda zaten yazılmış/commit'lenmiş hiçbir kod bundan fayda görmezdi. Auth'u Kalıcılık'tan (Faz 8) hemen önce koymak mantıklı çünkü ikisi sıkı bağımlı: Supabase RLS politikaları `auth.uid()`'a göre çalışır, yani gerçek veri bağlamadan önce bir oturumun var olması gerekir. Faz 3-6 aralığında hâlâ seed veriyle çalışılmaya devam edilir, bu yüzden bu sıralama mevcut ilerlemeyi bozmaz.
@@ -296,5 +301,5 @@ AI'ye şu şekilde yönlendirme verebilirsiniz: *"lib/calculations.ts içindeki 
 |---|---|---|
 | Kalıcılık: local mı, cloud mu? | ✅ Çözüldü (5 Eylül 2026 revizyonu) | v1 için Supabase (Postgres + Auth) — cloud-first. Kullanıcı hesabı zorunlu, RLS ile kullanıcı bazlı veri izolasyonu. Eski öneri (IndexedDB/local-first) terk edildi. |
 | Routing: tab'lar ayrı route mu? | Karar verilmedi | v1'de `page.tsx` içinde client state ile tab geçişi (daha basit); route'lara bölme ihtiyacı sadece deep-linking gerekirse |
-| PDF export kütüphanesi | Karar verilmedi | v1 için `window.print()` + print CSS; gerçek PDF üretimi gerekirse `@react-pdf/renderer` değerlendirilebilir |
+| PDF export kütüphanesi | ✅ Çözüldü (11 Eylül 2026 revizyonu) | `@react-pdf/renderer` — gerçek, indirilebilir/paylaşılabilir bir `.pdf` dosyası üretir. `window.print()` seçeneği terk edildi: yazdırma önizlemesi native share sheet ile dosya olarak paylaşılamaz, PRD 5.3'ün "Paylaş butonu" gereksinimini karşılamaz. |
 | TypeScript zorunlu mu? | Öneri | Şiddetle önerilir ama vibe coding akışını yavaşlatıyorsa `.jsx` ile devam edip tipleri sonradan eklemek de geçerli bir yol |

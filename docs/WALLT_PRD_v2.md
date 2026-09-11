@@ -65,10 +65,13 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 
 ### 5.3 Export & Paylaşım
 
-- Genel harcama raporu PDF olarak export edilebilir
-- Custom zaman aralığı analizleri de export edilebilir olmalı
-- Export, bir bottom sheet içinde "Rapor Önizleme" olarak gösterilir; önizlemede kategori kırılımı ve toplam yer alır
-- Paylaş butonu: native share sheet üzerinden
+**Revizyon (11 Eylül 2026):** Aşağıdaki madde netleştirildi — "PDF olarak export edilebilir" ifadesi, tarayıcının yazdırma önizlemesini (`window.print()`) değil, kullanıcının cihazına indirebileceği/paylaşabileceği **gerçek bir `.pdf` dosyası** üretilmesini ifade eder (bkz. Teknik Analiz Bölüm 9).
+
+- Genel harcama raporu, gerçek bir **PDF dosyası** olarak üretilir — ekran görüntüsü ya da yazdırma önizlemesi değil, kullanıcının cihazına kaydedebileceği/başka bir uygulamaya gönderebileceği somut bir dosya
+- Custom zaman aralığı analizleri de export edilebilir olmalı — export edilen rapor, Genel Bakış'ta o an seçili olan tarih aralığını yansıtır (bkz. Bölüm 5.4)
+- Export, bir bottom sheet içinde "Rapor Önizleme" olarak gösterilir; önizlemede kategori kırılımı ve toplam yer alır (bu önizleme PDF'in kendisi değil, PDF'e ne gireceğinin ekran üzerindeki özetidir)
+- **İndir** butonu: PDF dosyasını üretip doğrudan cihaza indirir — tüm platformlarda her zaman çalışan, birincil eylem
+- **Paylaş** butonu: üretilen PDF dosyasını native share sheet üzerinden paylaşır; tarayıcı/cihaz dosya paylaşımını desteklemiyorsa (örn. bazı masaüstü tarayıcılar) bu buton görünmez ya da İndir ile aynı davranışa düşer
 
 ### 5.4 Zaman Dilimi Analizi
 
@@ -95,6 +98,8 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 - Tab bar'ın ortasında, yükseltilmiş dairesel bir **"+" FAB** bulunur — bu, "Harcama Ekle" akışını her zaman bir dokunuş uzağında tutar
 - Üstteki bar sade tutulur: uygulama adı ve üç ikon-buton (Dışa Aktar, Paylaş, Çıkış Yap — üçüncüsü Bölüm 5.5'teki kimlik doğrulama kararıyla eklendi)
 - Tüm ikincil etkileşimler (harcama ekleme, tarih filtresi, export önizleme) **bottom sheet** olarak açılır — ayrı sayfa/modal yerine mobilde alışılmış, alttan kayan panel deseni kullanılır
+
+**Netlik notu (11 Eylül 2026):** TopBar'daki "Dışa Aktar" ve "Paylaş" ikonları **ayrı akışlar değildir** — ikisi de aynı ExportSheet'i ("Rapor Önizleme") açar. Kullanıcı, sheet içindeki İndir ya da Paylaş butonundan hangisini kullanacağına orada karar verir (bkz. Bölüm 5.3).
 
 ### 6.2 Tablet Ara Durumu (768–1023px)
 
@@ -177,7 +182,7 @@ WALLT, bir Progressive Web App (PWA) olarak paketlenir; böylece kullanıcı tar
 | 3 | Veri nerede saklanacak — local mı, cloud mu? | ✅ Çözüldü — Supabase (cloud), kullanıcı hesabına bağlı (bkz. Bölüm 10) |
 | 4 | Offline kullanım desteklenecek mi? | ✅ Çözüldü — Hayır, v1 kapsamında değil (Supabase internet bağlantısı gerektirir) |
 | 5 | Zaman dilimi (timezone) sınır durumları nasıl ele alınacak? | ⏳ Açık — Teknik Analiz Dokümanı'nda risk olarak işaretlendi |
-| 6 | PDF export hangi teknik yolla üretilecek? | ⏳ Açık — `window.print()` vs. `@react-pdf/renderer` |
+| 6 | PDF export hangi teknik yolla üretilecek? | ✅ Çözüldü — `@react-pdf/renderer`, gerçek indirilebilir/paylaşılabilir dosya (bkz. Bölüm 5.3, Teknik Analiz Bölüm 9) |
 | 7 | Genel Bakış / İstatistikler ayrı route mu, tek sayfa client state mi? | ⏳ Açık — v1 için tek sayfa öneriliyor |
 
 ## 13. Kapsam Dışı Bırakılan Riskler / Notlar
