@@ -193,6 +193,19 @@ borderRadius: {
 ["#E88D4F", "#39B7A3", "#E2678A", "#7C8CE0", "#5FB88A", "#E0A23D"]
 ```
 
+**Breakpoint'ler (Responsive — 11 Eylül 2026 revizyonu):** Özel bir breakpoint tanımlanmaz, Tailwind'in varsayılan kırılım noktaları kullanılır. Mobil-first ilkesiyle tutarlı olarak base (prefix'siz) stiller mobil içindir, üst kırılım noktaları katmanlı olarak eklenir.
+
+| Tailwind prefix | Min genişlik | Bu noktada ne değişir |
+|---|---|---|
+| (yok, base) | 0px | Mobil düzen: alt tab bar + FAB + bottom sheet, tam genişlik/uçtan uca kartlar (PRD 6.1) |
+| `sm` | 640px | Yapısal değişiklik yok — yalnızca iç boşluk/tipografi ince ayarı |
+| `md` | 768px | İçerik sütunu ortalanır, kenar boşlukları artar; navigasyon hâlâ mobil kalıbında (PRD 6.2) |
+| `lg` | 1024px | **Yapısal kırılım noktası**: alt tab bar + FAB → sol sidebar; bottom sheet → ortalanmış modal diyalog (PRD 6.3) |
+| `xl` | 1280px | Genel Bakış'taki grafik kartları (opsiyonel) iki sütunlu ızgaraya geçebilir |
+| `2xl` | 1536px | Ek değişiklik yok — içerik sütunu `xl`'de sabitlenen maksimum genişlikte kalmaya devam eder |
+
+`lg`, dokunmatik mobil/tablet deneyimiyle masaüstü sidebar deneyimi arasındaki **yapısal** sınırdır — bu noktada ilgili bileşenler yalnızca CSS değil, farklı bir DOM yapısı render eder (bkz. Bölüm 5'teki bileşen bazlı etki notları).
+
 ---
 
 ## 5. Bileşen Haritası (Prototip → Gerçek Bileşen)
@@ -210,9 +223,28 @@ borderRadius: {
 | Zaman Aralığı sheet'i | `DateRangeSheet.tsx` | `BottomSheet` wrapper'ını kullanır |
 | Dönem A/B kartları | `PeriodPicker.tsx` | `which: "A" \| "B"` prop'u ile iki kez render edilir |
 | İç içe halkalar | `ComparePieChart.tsx` | İki `<Pie>` bileşeni tek `PieChart` içinde |
-| Alt tab bar + FAB | `BottomTabBar.tsx` + `Fab.tsx` | FAB, tab bar'ın ortasındaki slot içinde `position:absolute` ile yükseltilir |
+| Alt tab bar + FAB | `BottomTabBar.tsx` + `Fab.tsx` | FAB, tab bar'ın ortasındaki slot içinde `position:absolute` ile yükseltilir; `lg`'den itibaren `Sidebar.tsx` lehine gizlenir (bkz. 5.1) |
 
 **Önemli mimari kural:** `page.tsx` tek "akıllı" (state tutan) bileşen olmalı; `components/` altındaki her şey mümkün olduğunca "aptal" (sadece prop alan, kendi state'i olmayan) bileşen olmalı. Bu, prototipte tek dosyada yönetilen state'in gerçek projede dağılıp kaybolmasını önler ve AI'nin hangi bileşenin neyi bildiğini takip etmesini kolaylaştırır.
+
+### 5.1 Responsive Bileşen Etkisi (11 Eylül 2026 revizyonu)
+
+Faz 0-4/7/8'de yazılan bileşenlerin Bölüm 4'teki breakpoint'ler geldiğinde nasıl etkileneceği:
+
+**Büyük ölçüde değişecek / net-yeni bileşen gerekecek:**
+- `BottomTabBar.tsx` + `Fab.tsx` — kendileri değişmez, ama `lg`'den itibaren `lg:hidden` ile tamamen gizlenirler; yerlerini yeni yazılacak `Sidebar.tsx` alır
+- `BottomSheet.tsx` — **aynı bileşen iki farklı DOM/CSS varyantı render etmeli**: `lg` altında mevcut alttan-kayan-panel (grabber, `rounded-t-sheet`, `sheet-up` animasyonu), `lg` ve üzerinde ortalanmış modal (grabber yok, tüm köşeler `rounded-card`, fade/scale animasyonu). Bu, mevcut Faz 2 implementasyonunun en çok dokunulacak parçası.
+- `page.tsx` (sayfa iskeleti) — `lg`'de sidebar + içerik sütunu ikili düzenine geçmeli; `xl`'de grafik kartları için opsiyonel 2 sütunlu grid
+
+**Sadece stil/boşluk ayarı yeterli (yapısal değişiklik yok):**
+- `TopBar.tsx` — içerik aynı kalır, sadece `page.tsx`'teki konumu (artık sidebar'ın yanında) değişir; bileşenin kendisi muhtemelen hiç değişmeyecek
+- `HeroTotal.tsx`, `SavingsSummaryCard.tsx` — `md`/`lg`'de büyüyen tipografi/boşluk (`md:`/`lg:` utility sınıfları), yapısal değişiklik yok
+- `CategoryBarChart.tsx`, `CategoryPieChart.tsx`, `ParetoChart.tsx`, `CategoryRadarChart.tsx` — Recharts `ResponsiveContainer` zaten akışkan; en fazla `page.tsx`'teki grid/height değerleri `xl`'de değişir, grafik bileşenlerinin kendi kodu değişmez
+- `RecentTransactions.tsx` — değişiklik gerekmiyor
+- `AddExpenseSheet.tsx`, `AuthForm.tsx` — form içerikleri zaten ortalanmış/dar genişlikte; `BottomSheet`'in modal varyantı içinde de olduğu gibi çalışır, form bileşenlerinin kendisi değişmez
+
+**Yeni yazılacak:**
+- `components/layout/Sidebar.tsx` — `lg` ve üzerinde `BottomTabBar`+`Fab`'ın yerini alan sol sabit menü (logo, nav öğeleri, "+ Harcama Ekle" butonu)
 
 ---
 

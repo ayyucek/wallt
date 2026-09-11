@@ -87,10 +87,28 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 
 ## 6. Bilgi Mimarisi ve Navigasyon (Mobil-First)
 
+**Revizyon (11 Eylül 2026):** WALLT mobil-first tasarlanır (temel/varsayılan stiller mobil içindir) ama artık gerçek anlamda **responsive**'dir: masaüstü ve tablette mobil kalıplar (alt tab bar, FAB, bottom sheet) olduğu gibi büyütülmez, ekran genişliğine uygun kendi eşdeğerlerine dönüşür. Üç düzen aşağıda tanımlanmıştır; tam breakpoint eşlemesi için **Teknik Analiz Dokümanı Bölüm 4**'e bakınız.
+
+### 6.1 Mobil Düzen (varsayılan, <768px)
+
 - **Alt tab bar**, iki ana ekran arasında geçiş sağlar: **Genel Bakış** ve **İstatistikler**
 - Tab bar'ın ortasında, yükseltilmiş dairesel bir **"+" FAB** bulunur — bu, "Harcama Ekle" akışını her zaman bir dokunuş uzağında tutar
 - Üstteki bar sade tutulur: uygulama adı ve üç ikon-buton (Dışa Aktar, Paylaş, Çıkış Yap — üçüncüsü Bölüm 5.5'teki kimlik doğrulama kararıyla eklendi)
 - Tüm ikincil etkileşimler (harcama ekleme, tarih filtresi, export önizleme) **bottom sheet** olarak açılır — ayrı sayfa/modal yerine mobilde alışılmış, alttan kayan panel deseni kullanılır
+
+### 6.2 Tablet Ara Durumu (768–1023px)
+
+Navigasyon mobildeki gibi kalır (alt tab bar + FAB + bottom sheet) — bu aralıktaki cihazlar çoğunlukla hâlâ dokunmatik ve tek/iki elle kullanılıyor, bottom nav doğal kalıyor. Tek fark: içerik sütunu artık tam genişlik uçtan uca değil, ortalanmış ve kenar boşlukları artırılmış — mobildeki "uçlara yapışık kart" hissi yerine daha "oturmuş" bir görünüm.
+
+### 6.3 Masaüstü Düzeni (≥1024px)
+
+Bu genişlikte navigasyon ve ikincil etkileşim kalıpları köklü biçimde değişir:
+
+- **Sol sabit kenar menü (sidebar)**, alt tab bar + FAB'ın yerini alır: üstte WALLT logosu, altında Genel Bakış / İstatistikler nav öğeleri, altta normal boyutta bir **"+ Harcama Ekle"** butonu (artık yüzen bir daire değil, sidebar'a ait standart bir buton)
+- Üst bar, sidebar'ın yanındaki içerik sütununun üstünde ince bir şerit olarak kalır; sadece ikon-butonları taşır (Dışa Aktar, Paylaş, Çıkış Yap) — uygulama adı artık sidebar'da olduğu için tekrar edilmez
+- Tüm bottom sheet'ler (Harcama Ekle, Zaman Aralığı, Rapor Önizleme) bu genişlikte **ortalanmış modal diyalog** olarak açılır — alttan kaymaz, ekranın ortasında belirir (grabber/swipe-to-dismiss ipucu kalkar, çünkü bu artık bir dokunmatik jest değil)
+- İçerik sütunu ortalanır ve maksimum bir genişlikte sınırlanır — aşırı geniş monitörlerde grafiklerin/metnin uçlara yapışmasını önlemek için
+- 1280px ve üzerinde, Genel Bakış'taki grafik kartları (yer varsa) tek sütun yerine iki sütunlu bir ızgarada yan yana gösterilebilir — bu netleştirilecek bir iyileştirmedir, v1 için zorunlu değildir
 
 ## 7. Görselleştirme Gereksinimleri
 
@@ -173,7 +191,7 @@ WALLT, bir Progressive Web App (PWA) olarak paketlenir; böylece kullanıcı tar
 
 | Faz | Kapsam | Platform |
 |---|---|---|
-| MVP (v1) | Manuel giriş (modal), hybrid kategori, bar/pie/pareto/radar chart, tasarruf takibi, **email+şifre ile kimlik doğrulama ve Supabase ile bulut tabanlı veri saklama**, PDF export, paylaş butonu, mobil-first navigasyon | Web (Next.js), PWA desteğiyle |
+| MVP (v1) | Manuel giriş (modal), hybrid kategori, bar/pie/pareto/radar chart, tasarruf takibi, **email+şifre ile kimlik doğrulama ve Supabase ile bulut tabanlı veri saklama**, PDF export, paylaş butonu, **responsive navigasyon (mobil: alt tab bar/FAB/bottom sheet, masaüstü ≥1024px: sidebar/modal — bkz. Bölüm 6)** | Web (Next.js), PWA desteğiyle |
 | v1.1 | İstatistikler ekranı — üç grafikte de dönem overplot | Web |
 | v2 | Bildirimler/hatırlatma sistemi | Web |
 | v3 | Native geçiş tetikleyicilerinden biri gerçekleştiğinde: React Native/Expo (EAS Build) ile iOS + Android | Native (RN/Expo) |
