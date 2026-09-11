@@ -15,8 +15,6 @@ import Toast from "@/components/ui/Toast";
 import HeroTotal from "@/components/genel/HeroTotal";
 import SavingsSummaryCard from "@/components/genel/SavingsSummaryCard";
 import CategoryBarChart from "@/components/genel/CategoryBarChart";
-import CategoryPieChart from "@/components/genel/CategoryPieChart";
-import ParetoChart from "@/components/genel/ParetoChart";
 import CategoryRadarChart from "@/components/genel/CategoryRadarChart";
 import RecentTransactions from "@/components/genel/RecentTransactions";
 import PeriodPicker from "@/components/istatistikler/PeriodPicker";
@@ -33,7 +31,6 @@ import {
   filterByRange,
   isExpense,
   isSaving,
-  paretoData,
   quickRange,
   radarData,
   withSavingsBar,
@@ -151,7 +148,6 @@ export default function Home() {
   const totalSavings = useMemo(() => savings.reduce((s, t) => s + t.amount, 0), [savings]);
   const barData = useMemo(() => withSavingsBar(aggSorted, totalSavings), [aggSorted, totalSavings]);
   const pieData = useMemo(() => aggSorted.filter((c) => c.total > 0), [aggSorted]);
-  const pareto = useMemo(() => paretoData(agg), [agg]);
   const radar = useMemo(() => radarData(agg), [agg]);
   const radarAverage = radar[0]?.average ?? 0;
 
@@ -242,20 +238,6 @@ export default function Home() {
                   <h3 className="mb-1 text-sm font-bold text-ink">Kategoriye Göre Harcama</h3>
                   <p className="mb-3 text-xs font-medium text-muted">En çok harcanandan en aza sıralı</p>
                   <CategoryBarChart data={barData} />
-                </section>
-
-                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Dağılımı</h3>
-                  <p className="mb-3 text-xs font-medium text-muted">Oransal dağılım</p>
-                  <CategoryPieChart data={pieData} />
-                </section>
-
-                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-                  <h3 className="mb-1 text-sm font-bold text-ink">Pareto / Kümülatif Etki</h3>
-                  <p className="mb-3 text-xs font-medium text-muted">
-                    Kategoriler büyükten küçüğe, %80 referans çizgisiyle
-                  </p>
-                  <ParetoChart data={pareto} />
                 </section>
 
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
