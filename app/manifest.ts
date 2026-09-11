@@ -2,6 +2,10 @@ import type { MetadataRoute } from "next";
 
 // Next.js native manifest dosya kuralı — bkz. Teknik Analiz Bölüm 1
 // (next-pwa yerine bu yaklaşımı seçme gerekçesi orada belgelenmiştir).
+//
+// İkonlar public/icons/ altındaki statik PNG dosyalarıdır (tasarımcı tarafından
+// sağlandı, 11 Eylül 2026). ⚠️ icon-192 ve icon-512 (purpose: "any") ile
+// icon-maskable-512 setten eksik — bkz. Teknik Analiz Bölüm 1'deki not.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "WALLT",
@@ -14,20 +18,20 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "tr",
     icons: [
       {
-        src: "/manifest-icons/icon-192",
+        src: "/icons/icon-180.png",
+        sizes: "180x180",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-384.png",
+        sizes: "384x384",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-maskable-192.png",
         sizes: "192x192",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/manifest-icons/icon-512",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/manifest-icons/icon-512-maskable",
-        sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
       },
