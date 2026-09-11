@@ -6,6 +6,7 @@ import type { Category, Transaction, TransactionType } from "@/lib/types";
 
 interface AddExpenseSheetProps {
   categories: Category[];
+  initialCategoryId?: string;
   onSubmit: (input: Omit<Transaction, "id">) => Promise<void>;
   onAddCategory: (name: string) => Promise<Category>;
   onClose: () => void;
@@ -21,6 +22,7 @@ function toDatetimeLocalValue(d: Date): string {
 
 export default function AddExpenseSheet({
   categories,
+  initialCategoryId,
   onSubmit,
   onAddCategory,
   onClose,
@@ -29,7 +31,9 @@ export default function AddExpenseSheet({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0]?.id ?? "");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    initialCategoryId ?? categories[0]?.id ?? ""
+  );
   const [dateTimeValue, setDateTimeValue] = useState(() => toDatetimeLocalValue(new Date()));
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");

@@ -119,9 +119,9 @@ Bu genişlikte navigasyon ve ikincil etkileşim kalıpları köklü biçimde de�
 
 | Grafik Tipi | Davranış | Not |
 |---|---|---|
-| Bar Chart | Kategoriye göre harcama dağılımı; kullanıcı harcama yaptıkça ilgili bar büyür | Genel Bakış'ta — seçili dönemde toplam tasarruf > 0 ise sona ayrı görünümde bir "Tasarruf" barı eklenir (bkz. 7.2) |
-| Pie Chart | Kategori bazlı oransal dağılım | Genel Bakış'ta |
-| Pareto / Histogram | Kategorileri harcama büyüklüğüne göre sıralayıp kümülatif etkiyi %80 referans çizgisiyle gösterir | Genel Bakış'ta |
+| Bar Chart | Kategoriye göre harcama dağılımı; kullanıcı harcama yaptıkça ilgili bar büyür | Genel Bakış'ta — seçili dönemde toplam tasarruf > 0 ise sona ayrı görünümde bir "Tasarruf" barı eklenir (bkz. 7.2). **11 Eylül 2026 eklentisi:** Bir kategori barına dokunmak/tıklamak, o kategori önceden seçili olarak Harcama Ekle sheet'ini açar — prototipte "bir bara dokunarak o kategoriye harcama ekleyebilirsin" ipucuyla belirtilen davranış artık uygulamada da var. Tasarruf barı bu davranışa dahil değildir (bkz. 7.2). |
+| Pie Chart | Kategori bazlı oransal dağılım | Yalnızca İstatistikler'de, dönem karşılaştırmalı iç içe halka olarak (bkz. 7.1) — Genel Bakış'taki tekli görünüm 11 Eylül 2026'da kaldırıldı, İstatistikler'deki karşılaştırmayla yeterince kapsanıyordu |
+| Pareto / Histogram | Kategorileri harcama büyüklüğüne göre sıralayıp kümülatif etkiyi %80 referans çizgisiyle gösterir | Yalnızca İstatistikler'de, dönem karşılaştırmalı olarak (bkz. 7.1) — Genel Bakış'taki tekli görünüm 11 Eylül 2026'da kaldırıldı, aynı gerekçeyle |
 | Radar / Ağırlık Haritası | Her kategorinin harcamasını, o dönemde harcaması olan kategorilerin ortalamasına göre konumlandırır | Genel Bakış'ta — yalnızca seçili dönemde en az 3 kategoride harcama varsa gösterilir, aksi halde gizlenir |
 | Renk Kodlama | Her kategori sabit bir renkle temsil edilir, tüm grafiklerde ve chip'lerde tutarlı | Genel |
 

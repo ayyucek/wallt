@@ -16,9 +16,10 @@ import type { CategoryTotal } from "@/lib/types";
 
 interface CategoryBarChartProps {
   data: CategoryTotal[];
+  onBarClick?: (categoryId: string) => void;
 }
 
-export default function CategoryBarChart({ data }: CategoryBarChartProps) {
+export default function CategoryBarChart({ data, onBarClick }: CategoryBarChartProps) {
   return (
     <ResponsiveContainer width="100%" height={Math.max(180, data.length * 42)}>
       <BarChart data={data} layout="vertical" margin={{ top: 4, right: 24, left: 8, bottom: 0 }}>
@@ -37,7 +38,16 @@ export default function CategoryBarChart({ data }: CategoryBarChartProps) {
           contentStyle={CHART_TOOLTIP_STYLE}
           cursor={{ fill: CHART_CURSOR_FILL }}
         />
-        <Bar dataKey="total" name="Toplam" radius={[0, 8, 8, 0]}>
+        <Bar
+          dataKey="total"
+          name="Toplam"
+          radius={[0, 8, 8, 0]}
+          onClick={(item: { payload?: CategoryTotal }) => {
+            const entry = item.payload;
+            if (!onBarClick || !entry || entry.isSaving) return;
+            onBarClick(entry.id);
+          }}
+        >
           {data.map((entry) => (
             <Cell
               key={entry.id}
@@ -46,6 +56,7 @@ export default function CategoryBarChart({ data }: CategoryBarChartProps) {
               strokeWidth={entry.isSaving ? 1.5 : 0}
               strokeDasharray={entry.isSaving ? "5 4" : undefined}
               fillOpacity={entry.isSaving ? 0.35 : 1}
+              cursor={onBarClick && !entry.isSaving ? "pointer" : "default"}
             />
           ))}
         </Bar>

@@ -66,6 +66,7 @@ export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("genel");
   const [addSheetOpen, setAddSheetOpen] = useState(false);
+  const [initialAddCategoryId, setInitialAddCategoryId] = useState<string | undefined>(undefined);
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const [rangeSheetOpen, setRangeSheetOpen] = useState(false);
 
@@ -199,13 +200,18 @@ export default function Home() {
     return category;
   }
 
+  function openAddSheet(categoryId?: string) {
+    setInitialAddCategoryId(categoryId);
+    setAddSheetOpen(true);
+  }
+
   return (
     <>
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <Sidebar
           active={activeTab}
           onTabChange={setActiveTab}
-          onAddClick={() => setAddSheetOpen(true)}
+          onAddClick={() => openAddSheet()}
         />
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -236,8 +242,10 @@ export default function Home() {
 
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
                   <h3 className="mb-1 text-sm font-bold text-ink">Kategoriye Göre Harcama</h3>
-                  <p className="mb-3 text-xs font-medium text-muted">En çok harcanandan en aza sıralı</p>
-                  <CategoryBarChart data={barData} />
+                  <p className="mb-3 text-xs font-medium text-muted">
+                    En çok harcanandan en aza sıralı — bir bara dokunarak o kategoriye harcama ekleyebilirsin
+                  </p>
+                  <CategoryBarChart data={barData} onBarClick={openAddSheet} />
                 </section>
 
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
@@ -324,13 +332,14 @@ export default function Home() {
         <BottomTabBar
           active={activeTab}
           onTabChange={setActiveTab}
-          onAddClick={() => setAddSheetOpen(true)}
+          onAddClick={() => openAddSheet()}
         />
       </div>
 
       <BottomSheet open={addSheetOpen} onClose={() => setAddSheetOpen(false)} title="Harcama Ekle">
         <AddExpenseSheet
           categories={categories}
+          initialCategoryId={initialAddCategoryId}
           onSubmit={handleAddTransaction}
           onAddCategory={handleAddCategory}
           onClose={() => setAddSheetOpen(false)}
