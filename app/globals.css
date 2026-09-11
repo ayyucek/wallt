@@ -1,24 +1,36 @@
 @import url("https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
-/* Design tokens — bkz. WALLT Teknik Analiz Dokümanı Bölüm 4. Onaylanmış prototipten
-   birebir alınmıştır, yeniden yorumlanmamalıdır. */
+/* Design tokens — bkz. WALLT Teknik Analiz Dokümanı Bölüm 4 (11 Eylül 2026 koyu
+   tema düzeltmesi). Onaylanmış prototipten (docs/WALLT_Prototype.jsx) birebir
+   alınmıştır, yeniden yorumlanmamalıdır. */
 @theme {
-  --color-ink: #2b2640;
-  --color-muted: #9891a8;
-  --color-page: #faf6f1;
-  --color-card: #ffffff;
-  --color-periodA: #ff9f5a;
-  --color-periodB: #35c6d6;
+  --color-ink: #f1eefa;
+  --color-muted: #a79fc7;
+  --color-page: #1b1533;
+  --color-shell: #0f0b22;
+  --color-card: #241e42;
+  --color-surface2: #2c2550;
+  --color-border: #342c58;
+  --color-border-dashed: #4a4074;
+  --color-border-tooltip: #3a3164;
+  --color-grid-stroke: #372e5c;
+  --color-periodA: #ffa45c;
+  --color-periodB: #5ac8fa;
   --color-saving: #34d399;
+  --color-tabA: #9b7be0;
+  --color-tabB: #4f9dff;
+  --color-tabC: #34d399;
+  --color-brand-start: #7b5fe0;
+  --color-brand-end: #4f7fe0;
 
-  --color-category-yemek: #ff7a6b;
-  --color-category-ulasim: #4f9dde;
+  --color-category-yemek: #ff6f91;
+  --color-category-ulasim: #4f9dff;
   --color-category-eglence: #a374e8;
-  --color-category-market: #4cc2a0;
+  --color-category-market: #4fd1a0;
   --color-category-fatura: #ffc15e;
-  --color-category-saglik: #f0729d;
-  --color-category-diger: #9aa3b5;
+  --color-category-saglik: #e0568c;
+  --color-category-diger: #8b93b8;
 
   --font-display: "Baloo 2", sans-serif;
   --font-sans: "Inter", sans-serif;
@@ -27,17 +39,22 @@
   --radius-sheet: 28px;
   --radius-pill: 100px;
 
-  --shadow-card: 0 6px 20px rgba(43, 38, 64, 0.06);
-  --shadow-float: 0 8px 22px rgba(255, 159, 90, 0.2);
-  --shadow-btn-primary: 0 6px 16px rgba(255, 122, 107, 0.35);
+  --shadow-card: 0 6px 20px rgba(0, 0, 0, 0.28);
+  --shadow-float: 0 10px 26px rgba(79, 95, 224, 0.35);
+  --shadow-btn-primary: 0 6px 16px rgba(79, 127, 224, 0.4);
+  --shadow-btn-saving: 0 6px 16px rgba(52, 211, 153, 0.35);
+  --shadow-fab: 0 4px 10px rgba(79, 95, 224, 0.4);
+  --shadow-toast: 0 8px 22px rgba(0, 0, 0, 0.45);
+  --shadow-tabbar: 0 -6px 20px rgba(0, 0, 0, 0.35);
 }
 
 :root {
-  --background: var(--color-page);
+  --background: linear-gradient(165deg, #1b1533 0%, #1a1b3d 55%, #17203f 100%);
   --foreground: var(--color-ink);
 }
 
 body {
+  background: var(--color-shell);
   background: var(--background);
   color: var(--foreground);
 }

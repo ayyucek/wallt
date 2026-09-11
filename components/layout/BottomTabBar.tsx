@@ -12,12 +12,13 @@ interface BottomTabBarProps {
 
 export default function BottomTabBar({ active, onTabChange, onAddClick }: BottomTabBarProps) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[70px] items-center bg-card shadow-[0_-6px_20px_rgba(43,38,64,.08)]">
+    <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[70px] items-center bg-card shadow-tabbar">
       <div className="flex h-full flex-1 justify-end pr-12">
         <TabButton
           label="Genel Bakış"
           icon={<Home size={19} />}
           active={active === "genel"}
+          activeColor="text-tabA"
           onClick={() => onTabChange("genel")}
         />
       </div>
@@ -29,6 +30,7 @@ export default function BottomTabBar({ active, onTabChange, onAddClick }: Bottom
           label="İstatistikler"
           icon={<BarChart3 size={19} />}
           active={active === "istatistikler"}
+          activeColor="text-tabB"
           onClick={() => onTabChange("istatistikler")}
         />
       </div>
@@ -40,11 +42,13 @@ function TabButton({
   label,
   icon,
   active,
+  activeColor,
   onClick,
 }: {
   label: string;
   icon: ReactNode;
   active: boolean;
+  activeColor: string;
   onClick: () => void;
 }) {
   return (
@@ -52,7 +56,7 @@ function TabButton({
       type="button"
       onClick={onClick}
       className={`flex h-full flex-1 flex-col items-center justify-center gap-1 font-sans text-[10.5px] font-semibold ${
-        active ? "text-ink" : "text-muted"
+        active ? activeColor : "text-muted"
       }`}
     >
       {icon}

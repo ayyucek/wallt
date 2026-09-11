@@ -396,7 +396,7 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setPeriodSheetOpen(false)}
-            className="mt-1 rounded-pill bg-category-yemek py-3 text-sm font-bold text-white shadow-btn-primary"
+            className="mt-1 rounded-pill bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] py-3 text-sm font-bold text-white shadow-btn-primary"
           >
             Tamam
           </button>

@@ -76,12 +76,14 @@ export default function AddExpenseSheet({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      <div className="flex rounded-pill bg-page p-1">
+      <div className="flex rounded-pill bg-surface2 p-1">
         <button
           type="button"
           onClick={() => setEntryType("expense")}
           className={`flex-1 rounded-pill py-2 text-sm font-bold transition-colors ${
-            entryType === "expense" ? "bg-category-yemek text-white" : "text-muted"
+            entryType === "expense"
+              ? "bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] text-white"
+              : "text-muted"
           }`}
         >
           Harcama
@@ -90,7 +92,7 @@ export default function AddExpenseSheet({
           type="button"
           onClick={() => setEntryType("saving")}
           className={`flex-1 rounded-pill py-2 text-sm font-bold transition-colors ${
-            isSaving ? "bg-saving text-white" : "text-muted"
+            isSaving ? "bg-[linear-gradient(135deg,#34D399,#22B8B0)] text-white" : "text-muted"
           }`}
         >
           Tasarruf
@@ -110,7 +112,7 @@ export default function AddExpenseSheet({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={isSaving ? "örn. Kahve almadım" : "örn. Öğle yemeği"}
-          className="w-full rounded-xl bg-page px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
         />
       </div>
 
@@ -121,7 +123,7 @@ export default function AddExpenseSheet({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Ek not..."
           rows={2}
-          className="w-full resize-y rounded-xl bg-page px-3 py-2.5 text-sm font-medium text-ink outline-none"
+          className="w-full resize-y rounded-xl bg-surface2 px-3 py-2.5 text-sm font-medium text-ink outline-none"
         />
       </div>
 
@@ -136,7 +138,7 @@ export default function AddExpenseSheet({
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="0"
-          className="w-full rounded-xl bg-page px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
         />
       </div>
 
@@ -146,7 +148,7 @@ export default function AddExpenseSheet({
           type="datetime-local"
           value={dateTimeValue}
           onChange={(e) => setDateTimeValue(e.target.value)}
-          className="w-full rounded-xl bg-page px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
         />
         <p className="mt-1.5 text-xs font-medium text-muted">
           Varsayılan olarak şu an dolu gelir, istersen değiştirebilirsin.
@@ -166,7 +168,7 @@ export default function AddExpenseSheet({
                 key={c.id}
                 onClick={() => setSelectedCategoryId(c.id)}
                 className="flex items-center gap-1.5 rounded-pill px-3 py-2 text-xs font-semibold"
-                style={active ? { background: c.color, color: "#fff" } : { background: "var(--color-page)", color: "var(--color-ink)" }}
+                style={active ? { background: c.color, color: "#fff" } : { background: "var(--color-surface2)", color: "var(--color-ink)" }}
               >
                 <span className="h-2 w-2 rounded-full" style={{ background: active ? "rgba(255,255,255,.85)" : c.color }} />
                 {c.name}
@@ -177,7 +179,7 @@ export default function AddExpenseSheet({
             <button
               type="button"
               onClick={() => setAddingCategory(true)}
-              className="flex items-center gap-1 rounded-pill border border-dashed border-muted px-3 py-2 text-xs font-semibold text-muted"
+              className="flex items-center gap-1 rounded-pill border border-dashed border-border-dashed px-3 py-2 text-xs font-semibold text-muted"
             >
               <Plus size={12} /> Yeni
             </button>
@@ -190,12 +192,12 @@ export default function AddExpenseSheet({
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Kategori adı"
-              className="flex-1 rounded-xl bg-page px-3 py-2 text-sm font-semibold text-ink outline-none"
+              className="flex-1 rounded-xl bg-surface2 px-3 py-2 text-sm font-semibold text-ink outline-none"
             />
             <button
               type="button"
               onClick={handleAddCategory}
-              className="rounded-pill bg-page px-3 py-2 text-xs font-bold text-ink"
+              className="rounded-pill bg-surface2 px-3 py-2 text-xs font-bold text-ink"
             >
               Ekle
             </button>
@@ -205,7 +207,7 @@ export default function AddExpenseSheet({
                 setAddingCategory(false);
                 setNewCategoryName("");
               }}
-              className="rounded-pill bg-page px-2.5 py-2 text-ink"
+              className="rounded-pill bg-surface2 px-2.5 py-2 text-ink"
               aria-label="Vazgeç"
             >
               <X size={13} />
@@ -220,8 +222,10 @@ export default function AddExpenseSheet({
         <button
           type="submit"
           disabled={!canSubmit || submitting}
-          className={`flex flex-1 items-center justify-center gap-1.5 rounded-pill py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-45 disabled:shadow-none ${
-            isSaving ? "bg-saving" : "bg-category-yemek"
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-pill py-3 text-sm font-bold text-white disabled:opacity-45 disabled:shadow-none ${
+            isSaving
+              ? "bg-[linear-gradient(135deg,#34D399,#22B8B0)] shadow-btn-saving"
+              : "bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] shadow-btn-primary"
           }`}
         >
           <Plus size={14} /> {submitting ? "..." : isSaving ? "Tasarruf Ekle" : "Harcama Ekle"}
@@ -229,7 +233,7 @@ export default function AddExpenseSheet({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-pill bg-page px-4 py-3 text-sm font-bold text-ink"
+          className="rounded-pill bg-surface2 px-4 py-3 text-sm font-bold text-ink"
         >
           Vazgeç
         </button>

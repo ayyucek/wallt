@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CHART_GRID, CHART_TICK, CHART_TOOLTIP_STYLE } from "@/lib/chartTheme";
+import { CHART_CURSOR_FILL, CHART_GRID, CHART_TICK, CHART_TOOLTIP_STYLE } from "@/lib/chartTheme";
 import { formatCurrency } from "@/lib/format";
 import type { CategoryTotal } from "@/lib/types";
 
@@ -35,7 +35,7 @@ export default function CategoryBarChart({ data }: CategoryBarChartProps) {
         <Tooltip
           formatter={(value) => formatCurrency(Number(value))}
           contentStyle={CHART_TOOLTIP_STYLE}
-          cursor={{ fill: "rgba(43,38,64,0.04)" }}
+          cursor={{ fill: CHART_CURSOR_FILL }}
         />
         <Bar dataKey="total" name="Toplam" radius={[0, 8, 8, 0]}>
           {data.map((entry) => (

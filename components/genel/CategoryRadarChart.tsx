@@ -18,7 +18,7 @@ interface CategoryRadarChartProps {
   average: number;
 }
 
-const RADAR_ACCENT = "#a374e8"; // category.eglence — mevcut tokenlardan biri, yeni renk icat edilmedi
+const RADAR_ACCENT = "#7b5fe0"; // brand-start (marka moru) — prototipte radar stroke/fill bu renk
 
 export default function CategoryRadarChart({ data, average }: CategoryRadarChartProps) {
   if (data.length < 3) {
@@ -43,7 +43,7 @@ export default function CategoryRadarChart({ data, average }: CategoryRadarChart
       </ResponsiveContainer>
       <div className="mt-3 flex flex-wrap gap-3">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-ink">
-          <span className="h-2 w-2 rounded-full bg-category-eglence" /> Harcama
+          <span className="h-2 w-2 rounded-full bg-brand-start" /> Harcama
         </div>
         <div className="flex items-center gap-1.5 text-xs font-semibold text-ink">
           <span className="h-2 w-2 rounded-full bg-muted" /> Ortalama ({formatCurrency(average)})

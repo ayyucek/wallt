@@ -22,7 +22,7 @@ export default function BottomSheet({ open, onClose, title, children }: BottomSh
         className="max-h-[88vh] w-full overflow-y-auto rounded-t-sheet bg-page px-5 pb-7 pt-3 [animation:sheet-up_.22s_cubic-bezier(.2,.8,.3,1)] lg:max-w-md lg:rounded-card lg:p-6 lg:[animation:modal-in_.18s_ease-out]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-auto mb-4 h-1.5 w-10 rounded-pill bg-muted/40 lg:hidden" />
+        <div className="mx-auto mb-4 h-1.5 w-10 rounded-pill bg-border-dashed lg:hidden" />
         <div className="mb-4 flex items-center justify-between">
           <h4 className="font-display text-lg font-bold text-ink">{title}</h4>
           <button

@@ -56,12 +56,14 @@ export default function AuthForm() {
 
   return (
     <div className="rounded-card bg-card p-6 shadow-card">
-      <div className="mb-5 flex rounded-pill bg-page p-1">
+      <div className="mb-5 flex rounded-pill bg-surface2 p-1">
         <button
           type="button"
           onClick={() => setMode("signin")}
           className={`flex-1 rounded-pill py-2 text-sm font-bold transition-colors ${
-            mode === "signin" ? "bg-category-yemek text-white" : "text-muted"
+            mode === "signin"
+              ? "bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] text-white"
+              : "text-muted"
           }`}
         >
           Giriş Yap
@@ -70,7 +72,9 @@ export default function AuthForm() {
           type="button"
           onClick={() => setMode("signup")}
           className={`flex-1 rounded-pill py-2 text-sm font-bold transition-colors ${
-            mode === "signup" ? "bg-category-yemek text-white" : "text-muted"
+            mode === "signup"
+              ? "bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] text-white"
+              : "text-muted"
           }`}
         >
           Kayıt Ol
@@ -86,7 +90,7 @@ export default function AuthForm() {
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-xl bg-page px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+            className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
             placeholder="ornek@email.com"
           />
         </div>
@@ -99,7 +103,7 @@ export default function AuthForm() {
             autoComplete={mode === "signin" ? "current-password" : "new-password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-xl bg-page px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+            className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
             placeholder="••••••••"
           />
         </div>
@@ -110,7 +114,7 @@ export default function AuthForm() {
         <button
           type="submit"
           disabled={loading}
-          className="mt-1 rounded-pill bg-category-yemek py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-50"
+          className="mt-1 rounded-pill bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-50"
         >
           {loading ? "..." : mode === "signin" ? "Giriş Yap" : "Kayıt Ol"}
         </button>

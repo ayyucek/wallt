@@ -149,26 +149,38 @@ export interface RadarEntry {
 
 ## 4. Tasarım Sistemi (Design Tokens)
 
-Bu değerler onaylanan prototipten birebir alınmıştır — Tailwind config'e bu şekilde işlenmeli, yeniden yorumlanmamalı.
+**⚠️ 11 Eylül 2026 düzeltmesi:** Bu bölümün önceki hali `docs/WALLT_Prototype.jsx`'in gerçek renkleriyle **uyuşmuyordu** — prototip koyu (dark) temalıdır, önceki taslak açık/krem bir tema tanımlamıştı. Aşağıdaki değerler `docs/WALLT_Prototype.jsx` üzerinde satır satır çıkarılan gerçek hex/rgba değerleridir (bkz. PM onayı, 11 Eylül 2026). Tailwind config'e bu şekilde işlenmeli, yeniden yorumlanmamalı.
 
 ```typescript
-// tailwind.config.ts — theme.extend
+// app/globals.css — @theme (Tailwind v4, CSS-first config)
 
 colors: {
-  ink: "#2B2640",
-  muted: "#9891A8",
-  page: "#FAF6F1",
-  card: "#FFFFFF",
-  periodA: "#FF9F5A",
-  periodB: "#35C6D6",
+  ink: "#F1EEFA",        // ana metin
+  muted: "#A79FC7",      // ikincil metin
+  page: "#1B1533",       // en dış gradient'in başlangıcı (bkz. aşağıdaki gradient notu)
+  shell: "#0F0B22",       // en dıştaki kabuk (.wallt-shell) ve Toast arka planı
+  card: "#241E42",
+  surface2: "#2C2550",   // input/ikincil yüzey (örn. .wallt-input arka planı)
+  border: "#342C58",     // satır/sheet ayraçları
+  borderDashed: "#4A4074", // chip-add kesikli kenarlık, sheet grabber arka planı
+  borderTooltip: "#3A3164", // tooltip kenarlığı
+  gridStroke: "#372E5C", // grafik grid çizgisi
+  periodA: "#FFA45C",
+  periodB: "#5AC8FA",
+  saving: "#34D399",
+  tabA: "#9B7BE0",
+  tabB: "#4F9DFF",
+  tabC: "#34D399",
+  brandStart: "#7B5FE0",
+  brandEnd: "#4F7FE0",
   category: {
-    yemek: "#FF7A6B",
-    ulasim: "#4F9DDE",
+    yemek: "#FF6F91",
+    ulasim: "#4F9DFF",
     eglence: "#A374E8",
-    market: "#4CC2A0",
+    market: "#4FD1A0",
     fatura: "#FFC15E",
-    saglik: "#F0729D",
-    diger: "#9AA3B5",
+    saglik: "#E0568C",
+    diger: "#8B93B8",
   },
 },
 fontFamily: {
@@ -182,16 +194,45 @@ borderRadius: {
 },
 ```
 
-**Kullanım kuralı (AI'ye özellikle belirtilmeli):** `font-display` (Baloo 2) **sadece** hero tutar, sheet başlıkları ve büyük istatistik sayıları için kullanılır. Buton, label, chip, body metni her zaman `font-sans` (Inter). Bu ayrım karıştırılırsa tasarım "çizgi film" hissine geri döner (bkz. önceki iterasyon geri bildirimi) — bu kısıtı AI'ye açıkça hatırlatın.
-
-**Gölge/derinlik stili:** Sert/offset gölge YOK. Her zaman yumuşak, bulanık, düşük opasiteli gölgeler:
+**Arka plan gradient'i:** Sayfa arka planı düz bir renk değil, gradient'tir:
 ```css
---shadow-card: 0 6px 20px rgba(43,38,64,.06);
---shadow-float: 0 8px 22px rgba(255,159,90,.20);   /* hero kart gibi renkli yüzeyler için */
---shadow-btn-primary: 0 6px 16px rgba(255,122,107,.35);
+background: linear-gradient(165deg, #1B1533 0%, #1A1B3D 55%, #17203F 100%);
+```
+`.wallt-shell` (en dış kapsayıcı) ise düz `#0F0B22` kullanır — bu aynı zamanda Toast bileşeninin arka planıdır.
+
+**Marka gradient'i (buton/FAB/aktif sekme):**
+```css
+background: linear-gradient(135deg, #7B5FE0 0%, #4F7FE0 100%);
+```
+Bu, önceki taslakta yanlışlıkla `category.yemek` rengiyle karıştırılan **birincil eylem** rengidir (FAB, "Ekle" butonu, form aktif sekmesi, radar grafiği stroke/fill — `#7B5FE0` tek başına).
+
+**Tasarruf gradient'i:**
+```css
+background: linear-gradient(135deg, #34D399, #22B8B0);
 ```
 
-**Kategori rengi ekleme mantığı:** Yeni custom kategori eklendiğinde renk şu diziden sırayla atanır (prototipteki `CUSTOM_PALETTE` ile birebir aynı):
+**Kullanım kuralı (AI'ye özellikle belirtilmeli):** `font-display` (Baloo 2) **sadece** hero tutar, sheet başlıkları ve büyük istatistik sayıları için kullanılır. Buton, label, chip, body metni her zaman `font-sans` (Inter). Bu ayrım karıştırılırsa tasarım "çizgi film" hissine geri döner (bkz. önceki iterasyon geri bildirimi) — bu kısıtı AI'ye açıkça hatırlatın.
+
+**Gölge/derinlik stili:** Sert/offset gölge YOK. Her zaman yumuşak, bulanık; koyu temada gölgeler siyah (`rgba(0,0,0,…)`) veya marka rengi glow'u olarak kullanılır:
+```css
+--shadow-card: 0 6px 20px rgba(0,0,0,.28);
+--shadow-float: 0 10px 26px rgba(79,95,224,.35);      /* hero kart glow'u */
+--shadow-btn-primary: 0 6px 16px rgba(79,127,224,.40); /* marka gradient butonları */
+--shadow-btn-saving: 0 6px 16px rgba(52,211,153,.35);  /* tasarruf butonu glow'u */
+--shadow-fab: 0 4px 10px rgba(79,95,224,.4);
+--shadow-icon-btn: 0 4px 12px rgba(0,0,0,.35);
+--shadow-toast: 0 8px 22px rgba(0,0,0,.45);
+--shadow-tabbar: 0 -6px 20px rgba(0,0,0,.35);          /* tab bar, yukarı doğru */
+```
+Ek tek-kullanımlık gölgeler (bileşen bazında, ayrı token gerekmez): stat kart `0 6px 16px rgba(0,0,0,.28)`, dönem kartı `0 6px 18px rgba(0,0,0,.28)`, hero filtre butonu `0 6px 16px rgba(0,0,0,.35)`, sheet kapatma butonu `0 4px 10px rgba(0,0,0,.35)`. Sheet overlay arka planı: `rgba(6,4,18,.65)`. Grafik hover/cursor dolgusu: `rgba(255,255,255,0.05)`. Tooltip: arka plan `#241E42` (=card), kenarlık `1px solid #3A3164`, gölge `0 10px 28px rgba(0,0,0,.45)`.
+
+**İstatistikler bilgi şeridi (info banner):** arka plan `#1E2A52`, ikon rengi `#6FB8FA`.
+
+**Input odak (focus) durumu:** kenarlık rengi `#7B5FE0`, arka plan `#332B5E`.
+
+**Bilinmeyen kategori fallback rengi:** `#888`.
+
+**Kategori rengi ekleme mantığı:** Yeni custom kategori eklendiğinde renk şu diziden sırayla atanır (prototipteki `CUSTOM_PALETTE` ile birebir aynı, değişmedi):
 ```
 ["#E88D4F", "#39B7A3", "#E2678A", "#7C8CE0", "#5FB88A", "#E0A23D"]
 ```

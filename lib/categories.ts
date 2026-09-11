@@ -1,13 +1,13 @@
 import type { Category } from "./types";
 
 export const DEFAULT_CATEGORIES: Category[] = [
-  { id: "yemek", name: "Yemek", color: "#FF7A6B" },
-  { id: "ulasim", name: "Ulaşım", color: "#4F9DDE" },
+  { id: "yemek", name: "Yemek", color: "#FF6F91" },
+  { id: "ulasim", name: "Ulaşım", color: "#4F9DFF" },
   { id: "eglence", name: "Eğlence", color: "#A374E8" },
-  { id: "market", name: "Market", color: "#4CC2A0" },
+  { id: "market", name: "Market", color: "#4FD1A0" },
   { id: "fatura", name: "Fatura", color: "#FFC15E" },
-  { id: "saglik", name: "Sağlık", color: "#F0729D" },
-  { id: "diger", name: "Diğer", color: "#9AA3B5" },
+  { id: "saglik", name: "Sağlık", color: "#E0568C" },
+  { id: "diger", name: "Diğer", color: "#8B93B8" },
 ];
 
 // Yeni custom kategoriye bu diziden sırayla renk atanır.

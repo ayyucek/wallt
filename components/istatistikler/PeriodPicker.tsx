@@ -36,13 +36,13 @@ export default function PeriodPicker({
           type="date"
           value={range.start}
           onChange={(e) => onStartChange(e.target.value)}
-          className="w-full rounded-xl bg-page px-3 py-2 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2 text-sm font-semibold text-ink outline-none"
         />
         <input
           type="date"
           value={range.end}
           onChange={(e) => onEndChange(e.target.value)}
-          className="w-full rounded-xl bg-page px-3 py-2 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2 text-sm font-semibold text-ink outline-none"
         />
       </div>
 
@@ -52,7 +52,7 @@ export default function PeriodPicker({
             key={opt.key}
             type="button"
             onClick={() => onQuickSelect(opt.key)}
-            className="rounded-pill bg-page px-3 py-1.5 text-[11px] font-semibold text-ink"
+            className="rounded-pill bg-surface2 px-3 py-1.5 text-[11px] font-semibold text-ink"
           >
             {opt.label}
           </button>

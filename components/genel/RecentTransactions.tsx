@@ -21,7 +21,7 @@ export default function RecentTransactions({ transactions, categories }: RecentT
         const saving = t.type === "saving";
         const dotColor = saving ? SAVING_COLOR : cat?.color ?? "#888888";
         return (
-          <div key={t.id} className="border-b border-page py-2.5 last:border-none">
+          <div key={t.id} className="border-b border-border py-2.5 last:border-none">
             <div className="flex items-center gap-2">
               <span className="h-2 w-2 flex-shrink-0 rounded-full" style={{ backgroundColor: dotColor }} />
               <span className="flex-1 truncate text-sm font-semibold text-ink">{t.title || cat?.name}</span>

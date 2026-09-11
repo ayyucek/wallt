@@ -82,8 +82,8 @@ export default function ExportSheet({ rangeStart, rangeEnd, total, categories }:
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-card bg-page p-4">
-        <div className="mb-1 flex items-center justify-between border-b border-card pb-2">
+      <div className="rounded-card bg-card p-4">
+        <div className="mb-1 flex items-center justify-between border-b border-border pb-2">
           <span className="text-xs font-semibold text-muted">Dönem</span>
           <span className="text-sm font-semibold text-ink">{rangeLabel}</span>
         </div>
@@ -93,7 +93,7 @@ export default function ExportSheet({ rangeStart, rangeEnd, total, categories }:
           categories.map((c) => (
             <div
               key={c.id}
-              className="flex items-center justify-between border-b border-card py-2 last:border-none"
+              className="flex items-center justify-between border-b border-border py-2 last:border-none"
             >
               <div className="flex items-center gap-2">
                 <span className="h-2 w-2 rounded-full" style={{ background: c.color }} />
@@ -116,7 +116,7 @@ export default function ExportSheet({ rangeStart, rangeEnd, total, categories }:
           type="button"
           onClick={handleDownload}
           disabled={busy !== null}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-pill bg-category-yemek py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-50"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-pill bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-50"
         >
           <Download size={14} /> {busy === "download" ? "..." : "İndir"}
         </button>
@@ -125,7 +125,7 @@ export default function ExportSheet({ rangeStart, rangeEnd, total, categories }:
             type="button"
             onClick={handleShare}
             disabled={busy !== null}
-            className="flex flex-1 items-center justify-center gap-1.5 rounded-pill bg-page py-3 text-sm font-bold text-ink disabled:opacity-50"
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-pill bg-surface2 py-3 text-sm font-bold text-ink disabled:opacity-50"
           >
             <Share2 size={14} /> {busy === "share" ? "..." : "Paylaş"}
           </button>
