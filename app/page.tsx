@@ -16,7 +16,7 @@ import HeroTotal from "@/components/genel/HeroTotal";
 import SavingsSummaryCard from "@/components/genel/SavingsSummaryCard";
 import CategoryBarChart from "@/components/genel/CategoryBarChart";
 import CategoryRadarChart from "@/components/genel/CategoryRadarChart";
-import RecentTransactions from "@/components/genel/RecentTransactions";
+import TransactionList from "@/components/hareketler/TransactionList";
 import PeriodPicker from "@/components/istatistikler/PeriodPicker";
 import PeriodStats from "@/components/istatistikler/PeriodStats";
 import CompareBarChart from "@/components/istatistikler/CompareBarChart";
@@ -253,10 +253,15 @@ export default function Home() {
                   <p className="mb-3 text-xs font-medium text-muted">Her kategorinin ortalamaya göre konumu</p>
                   <CategoryRadarChart data={radar} average={radarAverage} />
                 </section>
+              </div>
+            )}
 
+            {!loadError && !loading && activeTab === "hareketler" && (
+              <div>
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-                  <h3 className="mb-3 text-sm font-bold text-ink">Son Hareketler</h3>
-                  <RecentTransactions transactions={transactions} categories={categories} />
+                  <h3 className="mb-1 text-sm font-bold text-ink">Son Hareketler</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">{formatRangeLabel(rangeStart, rangeEnd)}</p>
+                  <TransactionList transactions={transactions} categories={categories} />
                 </section>
               </div>
             )}

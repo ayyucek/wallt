@@ -268,16 +268,14 @@ Ek tek-kullanımlık gölgeler (bileşen bazında, ayrı token gerekmez): stat k
 |---|---|---|
 | Hero tutar + filtre ikonu | `HeroTotal.tsx` | `onFilterClick` prop'u ile `DateRangeSheet`'i açar |
 | Bar chart (kategori bazlı) | `CategoryBarChart.tsx` | `aggregate()` çıktısını alır (yalnızca `isExpense` işlemlerden), Recharts `BarChart` sarmalar; toplam tasarruf > 0 ise veri `withSavingsBar()`'dan geçirilerek sona "Tasarruf" barı eklenir (bkz. PRD 7.2) |
-| Pie chart | `CategoryPieChart.tsx` | Aynı veri kaynağını `CategoryBarChart` ile paylaşır (üstte hesaplanıp iki bileşene prop olarak geçilmeli — aynı hesaplamayı iki kere yapmayın) |
-| Pareto chart | `ParetoChart.tsx` | `paretoData()` çıktısını alır |
 | Kategori Ağırlık Haritası (radar) | `CategoryRadarChart.tsx` | `radarData()` çıktısını alır; dizi 3'ten kısaysa grafik yerine bir bilgi metni gösterir (PRD 7 tablosundaki kural) |
 | Tasarruf özet kartı | `SavingsSummaryCard.tsx` | Seçili dönemde toplam tasarruf > 0 ise gösterilir; `isSaving` ile filtrelenen işlemlerin toplamını alır |
-| Son Hareketler listesi | `RecentTransactions.tsx` | `transactions` array'ini prop olarak alır, kendi içinde slice(0,40) yapar; `isSaving(t)` true olan satırlar "Tasarruf" etiketiyle ve "+" işaretiyle ayrıştırılır |
+| Son Hareketler listesi | `components/hareketler/TransactionList.tsx` (öneri — bkz. 5.2) | **11 Eylül 2026 revizyonu:** eskiden Genel Bakış içinde `RecentTransactions.tsx` olarak gömülüydü (`slice(0,40)`, `max-h-80 overflow-y-auto`); artık ayrı "Son Hareketler" sekmesinin tek içeriği — `slice`/`max-h` kaldırılır, seçili zaman aralığındaki tüm işlemler gösterilir. Satır render mantığı (nokta, başlık, tutar, "Tasarruf" etiketi/"+" işareti) değişmez |
 | Harcama Ekle sheet'i | `AddExpenseSheet.tsx` | `BottomSheet` wrapper'ını kullanır; üstte Harcama/Tasarruf giriş tipi seçici olur, `onSubmit(transaction)` callback'i ile üst state'e yazar |
 | Zaman Aralığı sheet'i | `DateRangeSheet.tsx` | `BottomSheet` wrapper'ını kullanır |
 | Dönem A/B kartları | `PeriodPicker.tsx` | `which: "A" \| "B"` prop'u ile iki kez render edilir |
 | İç içe halkalar | `ComparePieChart.tsx` | İki `<Pie>` bileşeni tek `PieChart` içinde |
-| Alt tab bar + FAB | `BottomTabBar.tsx` + `Fab.tsx` | FAB, tab bar'ın ortasındaki slot içinde `position:absolute` ile yükseltilir; `lg`'den itibaren `Sidebar.tsx` lehine gizlenir (bkz. 5.1) |
+| Alt tab bar + FAB | `BottomTabBar.tsx` + `Fab.tsx` | FAB, tab bar'ın ortasındaki slot içinde `position:absolute` ile yükseltilir; `lg`'den itibaren `Sidebar.tsx` lehine gizlenir (bkz. 5.1). **11 Eylül 2026 revizyonu:** üçüncü sekme ("Son Hareketler") eklenince tab bar iki eşit olmayan yarıma bölünür (prototipteki `wallt-tabbar-half` deseni) — sol yarım Genel Bakış + Son Hareketler'i paylaşır, sağ yarım tek başına İstatistikler'i taşır; FAB'ın kendisi ve konumu değişmez (bkz. PRD 6.1) |
 | Export sheet'i / Rapor Önizleme | `ExportSheet.tsx` | `BottomSheet` wrapper'ını kullanır; kategori kırılımı + toplamı gösterir (Genel Bakış'ta o an seçili tarih aralığı için), İndir/Paylaş butonları `ReportDocument.tsx`'ten üretilen PDF'i tetikler (11 Eylül 2026 revizyonu, bkz. Bölüm 9) |
 | — (prototipte karşılığı yok) | `pdf/ReportDocument.tsx` | `@react-pdf/renderer` döküman tanımı; sadece kendi `StyleSheet.create()`'ini kullanır, Tailwind sınıfı kabul etmez (BarChart/PieChart bileşenlerinin `lib/chartTheme.ts` ile aynı deseni) |
 
@@ -295,12 +293,26 @@ Faz 0-4/7/8'de yazılan bileşenlerin Bölüm 4'teki breakpoint'ler geldiğinde 
 **Sadece stil/boşluk ayarı yeterli (yapısal değişiklik yok):**
 - `TopBar.tsx` — içerik aynı kalır, sadece `page.tsx`'teki konumu (artık sidebar'ın yanında) değişir; bileşenin kendisi muhtemelen hiç değişmeyecek
 - `HeroTotal.tsx`, `SavingsSummaryCard.tsx` — `md`/`lg`'de büyüyen tipografi/boşluk (`md:`/`lg:` utility sınıfları), yapısal değişiklik yok
-- `CategoryBarChart.tsx`, `CategoryPieChart.tsx`, `ParetoChart.tsx`, `CategoryRadarChart.tsx` — Recharts `ResponsiveContainer` zaten akışkan; en fazla `page.tsx`'teki grid/height değerleri `xl`'de değişir, grafik bileşenlerinin kendi kodu değişmez
-- `RecentTransactions.tsx` — değişiklik gerekmiyor
+- `CategoryBarChart.tsx`, `CategoryRadarChart.tsx` — Recharts `ResponsiveContainer` zaten akışkan; en fazla `page.tsx`'teki grid/height değerleri `xl`'de değişir, grafik bileşenlerinin kendi kodu değişmez (`CategoryPieChart.tsx`/`ParetoChart.tsx` bu maddede sayılıyordu, 11 Eylül 2026'da Genel Bakış'tan kaldırılıp silindi — bkz. Bölüm 6, Faz sonrası commit notları)
+- `RecentTransactions.tsx` — bu bölüm yazıldığında değişiklik gerekmiyordu; 11 Eylül 2026'da ayrı bir sekmeye taşındı, bkz. 5.2
 - `AddExpenseSheet.tsx`, `AuthForm.tsx` — form içerikleri zaten ortalanmış/dar genişlikte; `BottomSheet`'in modal varyantı içinde de olduğu gibi çalışır, form bileşenlerinin kendisi değişmez
 
 **Yeni yazılacak:**
 - `components/layout/Sidebar.tsx` — `lg` ve üzerinde `BottomTabBar`+`Fab`'ın yerini alan sol sabit menü (logo, nav öğeleri, "+ Harcama Ekle" butonu)
+
+### 5.2 Son Hareketler Sekmesi (11 Eylül 2026 revizyonu)
+
+"Son Hareketler", Genel Bakış içindeki bir bölümden ayrı ve sabit bir üçüncü sekmeye çıkarılıyor (bkz. PRD 6.1.1). Bunun kod üzerindeki somut etkileri:
+
+- **`components/hareketler/TransactionList.tsx` (öneri, net-yeni dosya):** `RecentTransactions.tsx`'in taşınmış hali. `transactions`/`categories` prop'larını aynı şekilde alır, ama `slice(0, 40)` ve dış `max-h-80 overflow-y-auto` sarmalayıcısı kaldırılır — artık kendi sekmesinin tüm yüksekliğini kullanır. Satır render mantığı (nokta, başlık, tutar, "Tasarruf" etiketi/"+" işareti, kategori+tarih+açıklama) birebir aynı kalır. `RecentTransactions.tsx` dosyası silinir (Genel Bakış'ta artık kullanılmıyor).
+- **`app/page.tsx`:**
+  - `TabKey` tipi `"genel" | "hareketler" | "istatistikler"` olur (bkz. `BottomTabBar.tsx`)
+  - Genel Bakış JSX bloğundan "Son Hareketler" `<section>`'ı kaldırılır
+  - Yeni bir `activeTab === "hareketler"` JSX bloğu eklenir: `HeroTotal`/`SavingsSummaryCard` olmadan, doğrudan `<TransactionList transactions={transactions} categories={categories} />` — zaman aralığı filtresi (`rangeStart`/`rangeEnd`, `filterByRange()`) Genel Bakış'la aynı state'i paylaştığı için ekstra bir filtre state'i gerekmez
+- **`components/layout/BottomTabBar.tsx`:**
+  - `TabKey` üç değerli olur; layout iki `wallt-tabbar-half` benzeri flex kapsayıcıya bölünür (sol: Genel Bakış + Son Hareketler, sağ: İstatistikler), FAB ortadaki mutlak konumlu slotunda değişmeden kalır (bkz. Bölüm 1 PWA/tab renkleri notundaki `tabC` tokeni, şimdiye kadar kullanılmamıştı — Son Hareketler'in aktif rengi olur)
+- **`components/layout/Sidebar.tsx`:** üçüncü bir `NavItem` eklenir (Genel Bakış / Son Hareketler / İstatistikler) — prototipte sidebar karşılığı olmadığından bu tamamen WALLT'a özgü, mevcut basit dikey liste deseninin doğal genişlemesi
+- **Sayfalama/sonsuz kaydırma yok** (bkz. PRD 6.1.1) — `lib/storage.ts`'teki `fetchTransactions()` zaten tüm veriyi tek seferde çekiyor, ek bir sorgu/state gerekmiyor
 
 ---
 

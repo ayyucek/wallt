@@ -2,21 +2,23 @@ import { SAVING_COLOR } from "@/lib/categories";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import type { Category, Transaction } from "@/lib/types";
 
-interface RecentTransactionsProps {
+interface TransactionListProps {
   transactions: Transaction[];
   categories: Category[];
 }
 
-export default function RecentTransactions({ transactions, categories }: RecentTransactionsProps) {
-  const recent = transactions.slice(0, 40);
-
-  if (recent.length === 0) {
+// Son Hareketler sekmesinin tek içeriği (11 Eylül 2026 — eskiden
+// components/genel/RecentTransactions.tsx olarak Genel Bakış'a gömülüydü ve
+// ilk 40 kayıtla sınırlıydı; artık seçili zaman aralığındaki tüm işlemleri
+// gösterir, bkz. Teknik Analiz Bölüm 5.2).
+export default function TransactionList({ transactions, categories }: TransactionListProps) {
+  if (transactions.length === 0) {
     return <p className="text-sm text-muted">Henüz harcama yok.</p>;
   }
 
   return (
-    <div className="max-h-80 overflow-y-auto">
-      {recent.map((t) => {
+    <div>
+      {transactions.map((t) => {
         const cat = categories.find((c) => c.id === t.categoryId);
         const saving = t.type === "saving";
         const dotColor = saving ? SAVING_COLOR : cat?.color ?? "#888888";

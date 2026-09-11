@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { BarChart3, Home } from "lucide-react";
+import { BarChart3, Home, Receipt } from "lucide-react";
 import Fab from "./Fab";
 
-export type TabKey = "genel" | "istatistikler";
+export type TabKey = "genel" | "hareketler" | "istatistikler";
 
 interface BottomTabBarProps {
   active: TabKey;
@@ -10,6 +10,10 @@ interface BottomTabBarProps {
   onAddClick: () => void;
 }
 
+// İki eşit olmayan "yarım" + ortada FAB çentiği — prototipteki
+// wallt-tabbar-half deseninin birebir aynısı (bkz. PRD 6.1, Teknik Analiz
+// 5.2). Sol yarım iki sekmeyi paylaşır, sağ yarım tek sekmeyi taşır; FAB'ın
+// konumu/boyutu sekme sayısından bağımsızdır.
 export default function BottomTabBar({ active, onTabChange, onAddClick }: BottomTabBarProps) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 flex h-[70px] items-center bg-card shadow-tabbar">
@@ -20,6 +24,13 @@ export default function BottomTabBar({ active, onTabChange, onAddClick }: Bottom
           active={active === "genel"}
           activeColor="text-tabA"
           onClick={() => onTabChange("genel")}
+        />
+        <TabButton
+          label="Son Hareketler"
+          icon={<Receipt size={19} />}
+          active={active === "hareketler"}
+          activeColor="text-tabC"
+          onClick={() => onTabChange("hareketler")}
         />
       </div>
       <div className="relative flex h-full w-16 items-center justify-center">

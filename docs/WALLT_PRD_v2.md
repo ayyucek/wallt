@@ -92,12 +92,22 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 
 **Revizyon (11 Eylül 2026):** WALLT mobil-first tasarlanır (temel/varsayılan stiller mobil içindir) ama artık gerçek anlamda **responsive**'dir: masaüstü ve tablette mobil kalıplar (alt tab bar, FAB, bottom sheet) olduğu gibi büyütülmez, ekran genişliğine uygun kendi eşdeğerlerine dönüşür. Üç düzen aşağıda tanımlanmıştır; tam breakpoint eşlemesi için **Teknik Analiz Dokümanı Bölüm 4**'e bakınız.
 
+**Navigasyon revizyonu (11 Eylül 2026):** "Son Hareketler" artık Genel Bakış içinde bir bölüm değil, ayrı ve sabit bir **üçüncü sekme**. Üç sekme düzeni ve FAB'ın konumu için `docs/WALLT_Prototype.jsx`'e bakıldı: prototipte zaten (v1'in kapsam dışı bıraktığı) üçüncü bir "Grafikler" sekmesiyle bu tam senaryo çözülmüş durumda — kendi çözümümüzü icat etmek yerine onu birebir yeniden kullanıyoruz (bkz. 6.1).
+
 ### 6.1 Mobil Düzen (varsayılan, <768px)
 
-- **Alt tab bar**, iki ana ekran arasında geçiş sağlar: **Genel Bakış** ve **İstatistikler**
+- **Alt tab bar**, üç ana ekran arasında geçiş sağlar: **Genel Bakış**, **Son Hareketler**, **İstatistikler**
+- Tab bar iki eşit olmayan "yarıma" bölünür ve FAB, bu iki yarım arasındaki sabit bir çentikte durur — prototipteki `wallt-tabbar-half` deseninin birebir aynısı: sol yarımda **Genel Bakış** ve **Son Hareketler** (ikisi de o yarımı paylaşır), sağ yarımda tek başına **İstatistikler**. FAB'ın konumu, boyutu ve yükseltilmiş görünümü hiç değişmez — sadece sol yarımdaki öğe sayısı 1'den 2'ye çıkar
+- Aktif sekme rengi kategoriye göre ayrışır (prototipteki `tab-b`/`tab-c` renk sınıflarıyla birebir): Genel Bakış mor (`tabA`), Son Hareketler yeşil (`tabC` — Teknik Analiz Bölüm 4'te tanımlı ama şimdiye kadar kullanılmamış tokendi, tam bunun için ayrılmış görünüyor), İstatistikler mavi (`tabB`)
 - Tab bar'ın ortasında, yükseltilmiş dairesel bir **"+" FAB** bulunur — bu, "Harcama Ekle" akışını her zaman bir dokunuş uzağında tutar
 - Üstteki bar sade tutulur: uygulama adı ve üç ikon-buton (Dışa Aktar, Paylaş, Çıkış Yap — üçüncüsü Bölüm 5.5'teki kimlik doğrulama kararıyla eklendi)
 - Tüm ikincil etkileşimler (harcama ekleme, tarih filtresi, export önizleme) **bottom sheet** olarak açılır — ayrı sayfa/modal yerine mobilde alışılmış, alttan kayan panel deseni kullanılır
+
+### 6.1.1 Son Hareketler Sekmesi
+
+- İçerik, Genel Bakış'taki (artık kaldırılan) özet bölümünün yerini alır ve genişletilir: kısıtlı bir sayıya (önceki "ilk 40 kayıt") kesilmeden, **seçili zaman aralığındaki tüm işlemler** listelenir
+- Zaman Aralığı filtresi (Genel Bakış'la paylaşılan aynı `rangeStart`/`rangeEnd` state'i) bu sekmeyi de kapsar — kullanıcı "Bu Ay"/"Geçen Ay" gibi bir aralık seçtiğinde her iki sekme de aynı veriyi gösterir, tutarlılık korunur
+- **Sayfalama/sonsuz kaydırma v1 kapsamında değildir** — Supabase sorgusu zaten kullanıcının tüm verisini tek seferde çekiyor (bkz. Teknik Analiz Bölüm 10); çok uzun bir tarih aralığında binlerce kayıt performans sorunu yaratırsa bu v1.1'de ele alınacak bilinen bir risktir, şimdilik kabul edilebilir bir basitleştirme
 
 **Netlik notu (11 Eylül 2026):** TopBar'daki "Dışa Aktar" ve "Paylaş" ikonları **ayrı akışlar değildir** — ikisi de aynı ExportSheet'i ("Rapor Önizleme") açar. Kullanıcı, sheet içindeki İndir ya da Paylaş butonundan hangisini kullanacağına orada karar verir (bkz. Bölüm 5.3).
 
@@ -109,7 +119,7 @@ Navigasyon mobildeki gibi kalır (alt tab bar + FAB + bottom sheet) — bu aral�
 
 Bu genişlikte navigasyon ve ikincil etkileşim kalıpları köklü biçimde değişir:
 
-- **Sol sabit kenar menü (sidebar)**, alt tab bar + FAB'ın yerini alır: üstte WALLT logosu, altında Genel Bakış / İstatistikler nav öğeleri, altta normal boyutta bir **"+ Harcama Ekle"** butonu (artık yüzen bir daire değil, sidebar'a ait standart bir buton)
+- **Sol sabit kenar menü (sidebar)**, alt tab bar + FAB'ın yerini alır: üstte WALLT logosu, altında Genel Bakış / Son Hareketler / İstatistikler nav öğeleri (prototipte sidebar hiç yok — bu üç öğenin dikey listesi tamamen WALLT'a özgü, önceki iki öğeli listenin doğal genişlemesi), altta normal boyutta bir **"+ Harcama Ekle"** butonu (artık yüzen bir daire değil, sidebar'a ait standart bir buton)
 - Üst bar, sidebar'ın yanındaki içerik sütununun üstünde ince bir şerit olarak kalır; sadece ikon-butonları taşır (Dışa Aktar, Paylaş, Çıkış Yap) — uygulama adı artık sidebar'da olduğu için tekrar edilmez
 - Tüm bottom sheet'ler (Harcama Ekle, Zaman Aralığı, Rapor Önizleme) bu genişlikte **ortalanmış modal diyalog** olarak açılır — alttan kaymaz, ekranın ortasında belirir (grabber/swipe-to-dismiss ipucu kalkar, çünkü bu artık bir dokunmatik jest değil)
 - İçerik sütunu ortalanır ve maksimum bir genişlikte sınırlanır — aşırı geniş monitörlerde grafiklerin/metnin uçlara yapışmasını önlemek için
