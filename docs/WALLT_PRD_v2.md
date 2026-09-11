@@ -43,14 +43,18 @@ Bankasına veri paylaşmak istemeyen, ama harcama alışkanlığını kategori v
 
 Harcama ekleme, ana ekranda her zaman açık bir form değil, **alt navigasyon çubuğunun ortasındaki yükseltilmiş "+" butonuyla açılan bir bottom sheet** üzerinden yapılır. Bu, mobil-first prensibiyle ana ekranı sade tutar ve harcama eklemeyi her ekrandan tek dokunuşla erişilebilir kılar.
 
+Sheet'in üstünde bir **Giriş Tipi** seçici bulunur: **Harcama** / **Tasarruf** (varsayılan: Harcama).
+- **Harcama**: normal bir gideri kaydeder; kategori toplamlarına ve tüm grafiklere (bar, pie, pareto, radar) dahil edilir.
+- **Tasarruf**: kullanıcının bilinçli olarak harcamadığı/biriktirdiği tutarı kaydeder; kategori toplamlarına ve grafiklere **dahil edilmez**, ayrı bir tasarruf toplamı olarak izlenir (bkz. 7.2). Bu seçenek işaretlendiğinde Tutar alanının etiketi "Tasarruf Edilen Tutar (₺)", Kategori alanının etiketi "Hangi kategoriden tasarruf ettin?" olarak değişir.
+
 Form alanları:
-- **Başlık** (zorunlu) — örn. "Öğle yemeği"
+- **Başlık** (zorunlu) — örn. "Öğle yemeği" (Tasarruf'ta örn. "Kahve almadım")
 - **Açıklama** (opsiyonel) — serbest metin not alanı
 - **Tutar** (₺, zorunlu)
 - **Tarih ve Saat** (zorunlu, **düzenlenebilir**) — varsayılan olarak "şu an" ile dolu gelir, kullanıcı geçmişe dönük bir harcamayı da girebilir
 - **Kategori** (hybrid model, bkz. 5.2)
 
-Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" butonu pasif kalır. Başarılı eklemede sheet kapanır ve kısa bir onay bildirimi (toast) gösterilir.
+Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif kalır. Başarılı eklemede sheet kapanır ve kısa bir onay bildirimi (toast) gösterilir (Tasarruf girişinde toast metni farklıdır, örn. "Tasarruf kaydedildi — ₺150").
 
 ### 5.2 Kategori Yönetimi
 
@@ -83,9 +87,10 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" butonu pasif kalır. Başarıl
 
 | Grafik Tipi | Davranış | Not |
 |---|---|---|
-| Bar Chart | Kategoriye göre harcama dağılımı; kullanıcı harcama yaptıkça ilgili bar büyür | Genel Bakış'ta |
+| Bar Chart | Kategoriye göre harcama dağılımı; kullanıcı harcama yaptıkça ilgili bar büyür | Genel Bakış'ta — seçili dönemde toplam tasarruf > 0 ise sona ayrı görünümde bir "Tasarruf" barı eklenir (bkz. 7.2) |
 | Pie Chart | Kategori bazlı oransal dağılım | Genel Bakış'ta |
 | Pareto / Histogram | Kategorileri harcama büyüklüğüne göre sıralayıp kümülatif etkiyi %80 referans çizgisiyle gösterir | Genel Bakış'ta |
+| Radar / Ağırlık Haritası | Her kategorinin harcamasını, o dönemde harcaması olan kategorilerin ortalamasına göre konumlandırır | Genel Bakış'ta — yalnızca seçili dönemde en az 3 kategoride harcama varsa gösterilir, aksi halde gizlenir |
 | Renk Kodlama | Her kategori sabit bir renkle temsil edilir, tüm grafiklerde ve chip'lerde tutarlı | Genel |
 
 ### 7.1 Dönem Karşılaştırma (Overplot) — İstatistikler Ekranı
@@ -98,6 +103,13 @@ Prototipte doğrulanan çözüm:
 Dönem A ve Dönem B, ayrı renk kodları taşır (Dönem A = sıcak turuncu, Dönem B = turkuaz) ve bu iki renk kategori renklerinden bağımsız, sadece dönem karşılaştırma bağlamında kullanılır.
 
 Üç istatistik kartı (Dönem A toplamı / Dönem B toplamı / Fark %) grafiklerin üzerinde her zaman görünür durur.
+
+### 7.2 Tasarruf Görselleştirmesi
+
+- Seçili dönemde toplam tasarruf > 0 ise, Genel Bakış'ta hero tutarın altında ayrı bir **tasarruf özet kartı** gösterilir (yeşil vurgu, toplam tasarruf tutarı)
+- Aynı koşulda, kategori bar chart'ının sonuna sabit bir **"Tasarruf" barı** eklenir; bu bar diğer kategori barlarından farklı bir dolgu/kenarlıkla ayrıştırılır ve tıklanamaz (diğer barların aksine harcama ekleme akışını tetiklemez)
+- Son Hareketler listesinde tasarruf girişleri "Tasarruf" etiketiyle ve tutarın başında "+" işaretiyle ayrıştırılır
+- Tasarruf, hiçbir grafikte (bar, pie, pareto, radar) kategori toplamlarına dahil edilmez — yalnızca kendi özet kartında ve bar chart'taki ayrı barında görünür
 
 ## 8. Tasarım Sistemi
 

@@ -87,8 +87,11 @@ export interface Category {
   isCustom?: boolean;
 }
 
+export type TransactionType = "expense" | "saving";
+
 export interface Transaction {
   id: string;
+  type: TransactionType; // "expense" (varsayılan) | "saving"
   title: string;
   description: string;  // boş string olabilir, opsiyonel
   amount: number;        // TL, kuruş yok (tam sayı)
@@ -104,14 +107,27 @@ export interface DateRange {
 
 export interface CategoryTotal extends Category {
   total: number;
+  isSaving?: boolean; // sadece withSavingsBar()'ın ürettiği sentetik "Tasarruf" barında true
 }
 
 export interface ParetoEntry extends CategoryTotal {
   cumPct: number;
 }
+
+export interface RadarEntry {
+  category: string;
+  value: number;
+  average: number;
+}
 ```
 
 **⚠️ Bilinen teknik risk — zaman dilimi:** Prototipte `timestamp.slice(0, 10)` ile tarih string'i çıkarılıyor (`txDateStr` fonksiyonu). Bu, kullanıcının tarayıcı saat dilimi UTC'den farklıysa gün sınırında ±1 günlük kaymalara yol açabilir. Gerçek üründe bu fonksiyonu **kullanıcının yerel saat dilimine göre** gün stringi üretecek şekilde yazın (`date-fns-tz` gibi bir kütüphane veya `Intl.DateTimeFormat` ile). Bu, PRD'nin açık sorular bölümünde işaretlenmemiş ama koda geçerken mutlaka çözülmesi gereken bir detaydır.
+
+**Tasarruf (`type: "saving"`) ve radar chart — v1 kapsamına eklendi:** Prototipte var olan bu iki özellik, ilk PRD/Teknik Analiz taslağında v1 kapsamı dışında bırakılmıştı; PM onayıyla v1'e geri alındı (bkz. PRD Bölüm 5.1, 7 ve 7.2). Buna bağlı fonksiyonlar `lib/calculations.ts` içinde:
+- `isExpense(t)` / `isSaving(t)` — bir işlemin türüne göre ayrıştırılması. `aggregate()`, `paretoData()` ve `radarData()`'ya verilecek dizi, çağıran taraf tarafından **önceden `isExpense` ile filtrelenmelidir** — bu fonksiyonların kendisi tür ayrımı yapmaz (prototipteki desenle birebir aynı).
+- `radarData(agg: CategoryTotal[]): RadarEntry[]` — harcaması olan kategorilerin listesini, bu kategorilerin ortalama harcamasıyla birlikte döner. UI katmanı, dönen dizi 3'ten kısaysa (PRD 7 tablosundaki kural) radar grafiğini göstermemelidir.
+- `withSavingsBar(sortedAgg: CategoryTotal[], totalSavings: number): CategoryTotal[]` — `totalSavings > 0` ise büyükten küçüğe sıralı kategori dizisinin sonuna, `id: "__savings__"` ve `isSaving: true` ile işaretli sentetik bir "Tasarruf" barı ekler.
+- Tasarruf rengi (`SAVING_COLOR = "#34D399"`), kategori renklerinden bağımsız sabit bir renktir ve `lib/categories.ts` içinde tanımlanır (periodA/periodB renklerine benzer şekilde).
 
 ---
 
@@ -171,11 +187,13 @@ borderRadius: {
 | Prototip Bölümü | Gerçek Bileşen | Not |
 |---|---|---|
 | Hero tutar + filtre ikonu | `HeroTotal.tsx` | `onFilterClick` prop'u ile `DateRangeSheet`'i açar |
-| Bar chart (kategori bazlı) | `CategoryBarChart.tsx` | `aggregate()` çıktısını alır, Recharts `BarChart` sarmalar |
+| Bar chart (kategori bazlı) | `CategoryBarChart.tsx` | `aggregate()` çıktısını alır (yalnızca `isExpense` işlemlerden), Recharts `BarChart` sarmalar; toplam tasarruf > 0 ise veri `withSavingsBar()`'dan geçirilerek sona "Tasarruf" barı eklenir (bkz. PRD 7.2) |
 | Pie chart | `CategoryPieChart.tsx` | Aynı veri kaynağını `CategoryBarChart` ile paylaşır (üstte hesaplanıp iki bileşene prop olarak geçilmeli — aynı hesaplamayı iki kere yapmayın) |
 | Pareto chart | `ParetoChart.tsx` | `paretoData()` çıktısını alır |
-| Son Hareketler listesi | `RecentTransactions.tsx` | `transactions` array'ini prop olarak alır, kendi içinde slice(0,40) yapar |
-| Harcama Ekle sheet'i | `AddExpenseSheet.tsx` | `BottomSheet` wrapper'ını kullanır, `onSubmit(transaction)` callback'i ile üst state'e yazar |
+| Kategori Ağırlık Haritası (radar) | `CategoryRadarChart.tsx` | `radarData()` çıktısını alır; dizi 3'ten kısaysa grafik yerine bir bilgi metni gösterir (PRD 7 tablosundaki kural) |
+| Tasarruf özet kartı | `SavingsSummaryCard.tsx` | Seçili dönemde toplam tasarruf > 0 ise gösterilir; `isSaving` ile filtrelenen işlemlerin toplamını alır |
+| Son Hareketler listesi | `RecentTransactions.tsx` | `transactions` array'ini prop olarak alır, kendi içinde slice(0,40) yapar; `isSaving(t)` true olan satırlar "Tasarruf" etiketiyle ve "+" işaretiyle ayrıştırılır |
+| Harcama Ekle sheet'i | `AddExpenseSheet.tsx` | `BottomSheet` wrapper'ını kullanır; üstte Harcama/Tasarruf giriş tipi seçici olur, `onSubmit(transaction)` callback'i ile üst state'e yazar |
 | Zaman Aralığı sheet'i | `DateRangeSheet.tsx` | `BottomSheet` wrapper'ını kullanır |
 | Dönem A/B kartları | `PeriodPicker.tsx` | `which: "A" \| "B"` prop'u ile iki kez render edilir |
 | İç içe halkalar | `ComparePieChart.tsx` | İki `<Pie>` bileşeni tek `PieChart` içinde |
