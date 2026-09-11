@@ -89,7 +89,7 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 
 - **Alt tab bar**, iki ana ekran arasında geçiş sağlar: **Genel Bakış** ve **İstatistikler**
 - Tab bar'ın ortasında, yükseltilmiş dairesel bir **"+" FAB** bulunur — bu, "Harcama Ekle" akışını her zaman bir dokunuş uzağında tutar
-- Üstteki bar sade tutulur: sadece uygulama adı ve iki ikon-buton (Dışa Aktar, Paylaş)
+- Üstteki bar sade tutulur: uygulama adı ve üç ikon-buton (Dışa Aktar, Paylaş, Çıkış Yap — üçüncüsü Bölüm 5.5'teki kimlik doğrulama kararıyla eklendi)
 - Tüm ikincil etkileşimler (harcama ekleme, tarih filtresi, export önizleme) **bottom sheet** olarak açılır — ayrı sayfa/modal yerine mobilde alışılmış, alttan kayan panel deseni kullanılır
 
 ## 7. Görselleştirme Gereksinimleri

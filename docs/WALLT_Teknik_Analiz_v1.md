@@ -35,12 +35,17 @@ wallt/
 ├── app/
 │   ├── layout.tsx
 │   ├── page.tsx                 # Genel Bakış + İstatistikler tab'ları burada state ile yönetilir
-│   └── globals.css              # Tailwind + font importları
+│   ├── globals.css              # Tailwind + font importları
+│   └── login/
+│       └── page.tsx              # email+şifre giriş/kayıt ekranı
+├── proxy.ts                      # Next.js 16'da middleware.ts'in yeni adı; oturumu tazeler + route korur
 ├── components/
 │   ├── layout/
-│   │   ├── TopBar.tsx
+│   │   ├── TopBar.tsx             # 3. ikon (Çıkış Yap) Faz 7'de eklendi
 │   │   ├── BottomTabBar.tsx
 │   │   └── Fab.tsx
+│   ├── auth/
+│   │   └── AuthForm.tsx           # giriş/kayıt formu (prototipte karşılığı yok, Faz 7'de net-new)
 │   ├── sheets/
 │   │   ├── BottomSheet.tsx       # ortak sheet wrapper (grabber, animasyon, overlay)
 │   │   ├── AddExpenseSheet.tsx
@@ -67,14 +72,19 @@ wallt/
 │   ├── categories.ts             # DEFAULT_CATEGORIES, CUSTOM_PALETTE
 │   ├── calculations.ts           # aggregate, paretoData, filterByRange (saf fonksiyonlar)
 │   ├── format.ts                 # formatCurrency, formatDateTime, formatRangeLabel
-│   ├── supabaseClient.ts          # Supabase client kurulumu (env: URL + anon key)
+│   ├── supabase/
+│   │   ├── client.ts              # Client Component'ler için (tarayıcı) Supabase client
+│   │   └── server.ts              # Server Component'ler için Supabase client
 │   ├── storage.ts                # Supabase okuma/yazma katmanı (CRUD; RLS user_id filtresini otomatik uygular)
 │   └── seed.ts                   # geliştirme ortamı için mock veri üretici
+├── .env.local.example             # NEXT_PUBLIC_SUPABASE_URL / ANON_KEY şablonu
 ├── tailwind.config.ts
 └── package.json
 ```
 
 **Neden bu ayrım önemli:** `lib/calculations.ts` içindeki fonksiyonlar (aggregate, paretoData, filterByRange) **saf fonksiyonlardır** — girdi/çıktısı net, yan etkisi yok. Bu, hem AI'nin doğru kod üretmesini kolaylaştırır hem de bu fonksiyonlar için birim testi yazmak neredeyse bedavadır (bkz. Bölüm 7).
+
+**Neden `lib/supabase/` iki dosyaya bölündü (Faz 7 uygulama notu):** Bu bölümün ilk sürümü tek bir `lib/supabaseClient.ts` planlıyordu. `@supabase/ssr` paketi, tarayıcıda (`createBrowserClient`) ve sunucuda (`createServerClient`, `next/headers`'ın `cookies()`'i üzerinden) farklı cookie mekanizmaları kullanır; ikisini tek dosyada birleştirmek oturumun Server Component'lerde görünmemesi gibi sessiz hatalara yol açar. Bu yüzden `client.ts`/`server.ts` ayrı tutuldu — bu, Bölüm 4'ün "yeniden yorumlama" kısıtının kapsamına girmeyen teknik bir zorunluluk.
 
 ---
 

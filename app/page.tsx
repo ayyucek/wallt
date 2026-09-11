@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import TopBar from "@/components/layout/TopBar";
 import BottomTabBar, { type TabKey } from "@/components/layout/BottomTabBar";
 import BottomSheet from "@/components/sheets/BottomSheet";
@@ -23,6 +24,7 @@ import {
 } from "@/lib/calculations";
 import { formatRangeLabel } from "@/lib/format";
 import { generateSeedData } from "@/lib/seed";
+import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/lib/types";
 
 function todayStr(): string {
@@ -36,6 +38,7 @@ function thisMonthStartStr(): string {
 }
 
 export default function Home() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("genel");
   const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
@@ -73,9 +76,20 @@ export default function Home() {
   const radar = useMemo(() => radarData(agg), [agg]);
   const radarAverage = radar[0]?.average ?? 0;
 
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
+
   return (
     <>
-      <TopBar onExportClick={() => setExportSheetOpen(true)} onShareClick={() => {}} />
+      <TopBar
+        onExportClick={() => setExportSheetOpen(true)}
+        onShareClick={() => {}}
+        onLogoutClick={handleLogout}
+      />
 
       <main className="flex-1 overflow-y-auto px-4 pb-28">
         {activeTab === "genel" ? (
