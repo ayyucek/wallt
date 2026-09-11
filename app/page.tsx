@@ -9,6 +9,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import BottomSheet from "@/components/sheets/BottomSheet";
 import AddExpenseSheet from "@/components/sheets/AddExpenseSheet";
 import DateRangeSheet from "@/components/sheets/DateRangeSheet";
+import ExportSheet from "@/components/sheets/ExportSheet";
 import Toast from "@/components/ui/Toast";
 import HeroTotal from "@/components/genel/HeroTotal";
 import SavingsSummaryCard from "@/components/genel/SavingsSummaryCard";
@@ -213,7 +214,7 @@ export default function Home() {
         <div className="flex min-h-0 flex-1 flex-col">
           <TopBar
             onExportClick={() => setExportSheetOpen(true)}
-            onShareClick={() => {}}
+            onShareClick={() => setExportSheetOpen(true)}
             onLogoutClick={handleLogout}
           />
 
@@ -353,7 +354,12 @@ export default function Home() {
       </BottomSheet>
 
       <BottomSheet open={exportSheetOpen} onClose={() => setExportSheetOpen(false)} title="Rapor Önizleme">
-        <p className="text-sm text-muted">İçerik Faz 9&apos;da eklenecek.</p>
+        <ExportSheet
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          total={totalExpenses}
+          categories={pieData}
+        />
       </BottomSheet>
 
       <BottomSheet open={rangeSheetOpen} onClose={() => setRangeSheetOpen(false)} title="Zaman Aralığı">
