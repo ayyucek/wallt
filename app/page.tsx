@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Filter } from "lucide-react";
 import TopBar from "@/components/layout/TopBar";
+import InstallHint from "@/components/pwa/InstallHint";
 import BottomTabBar, { type TabKey } from "@/components/layout/BottomTabBar";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomSheet from "@/components/sheets/BottomSheet";
@@ -219,6 +220,7 @@ export default function Home() {
           />
 
           <main className="flex-1 overflow-y-auto px-4 pb-28 lg:px-8 lg:pb-8">
+            <InstallHint />
             {loadError && (
               <p className="mt-6 rounded-card bg-card p-4 text-center text-sm font-semibold text-category-saglik shadow-card">
                 Veriler yüklenemedi: {loadError}

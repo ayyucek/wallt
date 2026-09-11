@@ -21,7 +21,7 @@ Bu dokümanı Claude Code'a (veya başka bir AI kodlama aracına) proje başlang
 | Kimlik Doğrulama & Kalıcılık | **Supabase** (Postgres + Auth, `@supabase/supabase-js` + `@supabase/ssr`) | Email+şifre girişi ve bulut tabanlı veri saklama v1 kapsamına alındı (5 Eylül 2026 revizyonu, bkz. PRD Bölüm 5.5/10); RLS (Row Level Security) ile her kullanıcı yalnızca kendi verisini görür/yazar, ayrı bir backend yazmaya gerek kalmaz |
 | Form/Tarih | Native HTML input (`date`, `datetime-local`) | Prototipte test edildi, ek kütüphane gerektirmiyor |
 | PDF Export | **`@react-pdf/renderer`** | Gerçek, indirilebilir/paylaşılabilir bir `.pdf` dosyası üretir (11 Eylül 2026 revizyonu — `window.print()` değil, bkz. Bölüm 9) |
-| PWA | `next-pwa` paketi | "Ana ekrana ekle" deneyimi için (PRD Bölüm 11.1) |
+| PWA | Next.js native dosya kuralları (`app/manifest.ts`, `app/icon.tsx`, `app/apple-icon.tsx`) + elle yazılmış minimal (cache'siz) service worker | "Ana ekrana ekle" deneyimi için (PRD Bölüm 11.1). **11 Eylül 2026 revizyonu:** İlk seçim olan `next-pwa` paketi 2022'den beri güncellenmemiş ve App Router'dan (dolayısıyla Next.js 16/Turbopack'ten) önceki bir dönemde kalmış — kullanılabilir değil. Next.js 16'nın kendi dosya kuralları manifest/ikon üretimini paketsiz karşılıyor; offline destek v1 kapsamında olmadığından (bkz. PRD Bölüm 12, soru 4) karmaşık bir cache stratejisine gerek yok — service worker yalnızca Chrome/Android'in kurulabilirlik kriterini karşılamak için var, hiçbir isteği önbelleğe almaz. |
 
 **Not:** Bu tercihler PRD'nin "Teknik Yaklaşım" bölümündeki web-first + AI-destekli geliştirme kararıyla uyumludur. Native geçiş (React Native/Expo) bu doküman kapsamında değildir; v3 fazında ayrı bir doküman olarak ele alınmalıdır.
 
@@ -37,16 +37,29 @@ wallt/
 │   ├── layout.tsx
 │   ├── page.tsx                 # Genel Bakış + İstatistikler tab'ları burada state ile yönetilir
 │   ├── globals.css              # Tailwind + font importları
+│   ├── manifest.ts               # PWA manifest (Faz 10, MetadataRoute.Manifest)
+│   ├── icon.tsx                  # Tarayıcı favicon'u — ImageResponse ile üretilir (Faz 10)
+│   ├── apple-icon.tsx             # iOS "ana ekrana ekle" ikonu (Faz 10)
+│   ├── manifest-icons/            # manifest.ts'in icons[] dizisinin işaret ettiği PNG route'ları (Faz 10)
+│   │   ├── icon-192/route.tsx
+│   │   ├── icon-512/route.tsx
+│   │   └── icon-512-maskable/route.tsx
 │   └── login/
 │       └── page.tsx              # email+şifre giriş/kayıt ekranı
 ├── proxy.ts                      # Next.js 16'da middleware.ts'in yeni adı; oturumu tazeler + route korur
+├── public/
+│   └── sw.js                     # minimal, cache'siz service worker (Faz 10 — bkz. Bölüm 1)
 ├── components/
 │   ├── layout/
 │   │   ├── TopBar.tsx             # 3. ikon (Çıkış Yap) Faz 7'de eklendi
 │   │   ├── BottomTabBar.tsx
+│   │   ├── Sidebar.tsx            # masaüstü (≥lg) navigasyonu, ara responsive fazında eklendi
 │   │   └── Fab.tsx
 │   ├── auth/
 │   │   └── AuthForm.tsx           # giriş/kayıt formu (prototipte karşılığı yok, Faz 7'de net-new)
+│   ├── pwa/
+│   │   ├── ServiceWorkerRegister.tsx  # public/sw.js'i client'ta register eder (Faz 10)
+│   │   └── InstallHint.tsx        # "ana ekrana ekle" onboarding ipucu (Faz 10)
 │   ├── sheets/
 │   │   ├── BottomSheet.tsx       # ortak sheet wrapper (grabber, animasyon, overlay)
 │   │   ├── AddExpenseSheet.tsx
@@ -79,6 +92,7 @@ wallt/
 │   │   ├── client.ts              # Client Component'ler için (tarayıcı) Supabase client
 │   │   └── server.ts              # Server Component'ler için Supabase client
 │   ├── storage.ts                # Supabase okuma/yazma katmanı (CRUD; RLS user_id filtresini otomatik uygular)
+│   ├── pwaIcon.tsx                # app/icon.tsx, apple-icon.tsx ve manifest-icons/* arasında paylaşılan ikon markası (Faz 10)
 │   └── seed.ts                   # geliştirme ortamı için mock veri üretici
 ├── .env.local.example             # NEXT_PUBLIC_SUPABASE_URL / ANON_KEY şablonu
 ├── tailwind.config.ts
@@ -308,7 +322,7 @@ Her faz, tek başına çalışır bir uygulama üretmeli — yani Faz 2 bitince 
 8. **Faz 7 — Kimlik Doğrulama (YENİ, 5 Eylül 2026 revizyonu):** Supabase projesi kurulumu, `@supabase/supabase-js` + `@supabase/ssr` entegrasyonu, `lib/supabaseClient.ts`; giriş/kayıt ekranları (email+şifre); session yönetimi ve route/erişim koruması — oturum yoksa uygulamanın geri kalanı gösterilmez. Bu fazın sonunda uygulama hâlâ `lib/seed.ts` mock verisiyle çalışabilir; gerçek veri bağlanması Faz 8'de.
 9. **Faz 8 — Kalıcılık (Supabase):** `lib/storage.ts` ile Supabase Postgres entegrasyonu (eskiden IndexedDB planlanıyordu, bkz. Bölüm 1 revizyon notu); `transactions`/`categories` tabloları + RLS politikaları; mock seed verisinin yerini giriş yapan kullanıcının gerçek verisi alır. Sayfa yenilenince veri kaybolmamalı.
 10. **Faz 9 — Export (11 Eylül 2026 revizyonu — gerçek PDF kararı):** `ExportSheet` içeriği (Rapor Önizleme — kategori kırılımı + toplam, Genel Bakış'ta o an seçili tarih aralığı için); `@react-pdf/renderer` ile `components/pdf/ReportDocument.tsx` PDF döküman tanımı (Inter fontu gerçek `.ttf` dosyasından `Font.register()` ile yüklenir — react-pdf tarayıcının CSS/font motorunu kullanmaz); **İndir** butonu (PDF blob'u üretip tarayıcı indirmesini tetikler) ve **Paylaş** butonu (Web Share API ile dosya paylaşımı destekleniyorsa native share sheet açar, desteklenmiyorsa İndir'e düşer).
-11. **Faz 10 — PWA + cila:** `next-pwa` kurulumu, manifest.json, ikonlar, iOS "ana ekrana ekle" onboarding ipucu.
+11. **Faz 10 — PWA + cila:** `app/manifest.ts` + `app/icon.tsx`/`apple-icon.tsx` + `manifest-icons/*` route'ları (marka gradient'i üzerinde "W" markası, bkz. Bölüm 1), minimal cache'siz `public/sw.js` (kurulabilirlik kriteri için), `layout.tsx`'te `viewport`/`appleWebApp` metadata'sı, ve Android/Chrome'da `beforeinstallprompt` ile iOS Safari'de manuel Paylaş → Ana Ekrana Ekle talimatını ayıran `InstallHint.tsx` onboarding ipucu.
 
 **Faz 7'nin neden burada olduğu:** Auth'u daha erken (ör. Faz 0/1) sokmak, Faz 3-6'nın tamamını (seed veriyle çalışan UI) gereksiz yere kimlik doğrulama akışının arkasına kilitlerdi ve o fazlarda zaten yazılmış/commit'lenmiş hiçbir kod bundan fayda görmezdi. Auth'u Kalıcılık'tan (Faz 8) hemen önce koymak mantıklı çünkü ikisi sıkı bağımlı: Supabase RLS politikaları `auth.uid()`'a göre çalışır, yani gerçek veri bağlamadan önce bir oturumun var olması gerekir. Faz 3-6 aralığında hâlâ seed veriyle çalışılmaya devam edilir, bu yüzden bu sıralama mevcut ilerlemeyi bozmaz.
 
