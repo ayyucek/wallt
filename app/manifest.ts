@@ -4,8 +4,8 @@ import type { MetadataRoute } from "next";
 // (next-pwa yerine bu yaklaşımı seçme gerekçesi orada belgelenmiştir).
 //
 // İkonlar public/icons/ altındaki statik PNG dosyalarıdır (tasarımcı tarafından
-// sağlandı, 11 Eylül 2026). ⚠️ icon-192 ve icon-512 (purpose: "any") ile
-// icon-maskable-512 setten eksik — bkz. Teknik Analiz Bölüm 1'deki not.
+// sağlandı, 11 Eylül 2026 — eksik kalan icon-192/icon-512/icon-maskable-512 seti
+// aynı gün içinde tamamlandı).
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "WALLT",
@@ -18,20 +18,26 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "tr",
     icons: [
       {
-        src: "/icons/icon-180.png",
-        sizes: "180x180",
+        src: "/icons/icon-192.png",
+        sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-384.png",
-        sizes: "384x384",
+        src: "/icons/icon-512.png",
+        sizes: "512x512",
         type: "image/png",
         purpose: "any",
       },
       {
         src: "/icons/icon-maskable-192.png",
         sizes: "192x192",
+        type: "image/png",
+        purpose: "maskable",
+      },
+      {
+        src: "/icons/icon-maskable-512.png",
+        sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
       },
