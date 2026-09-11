@@ -6,6 +6,11 @@ export const CHART_MUTED = "#9891a8";
 export const CHART_INK = "#2b2640";
 export const CHART_GRID = "rgba(152, 145, 168, 0.25)";
 
+// Dönem karşılaştırma (İstatistikler ekranı, PRD 7.1) — periodA/periodB
+// Tailwind tokenlarının ham hex karşılıkları.
+export const PERIOD_A = "#ff9f5a";
+export const PERIOD_B = "#35c6d6";
+
 export const CHART_TICK = {
   fill: CHART_MUTED,
   fontSize: 10,

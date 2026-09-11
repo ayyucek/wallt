@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Filter } from "lucide-react";
 import TopBar from "@/components/layout/TopBar";
 import BottomTabBar, { type TabKey } from "@/components/layout/BottomTabBar";
 import Sidebar from "@/components/layout/Sidebar";
@@ -16,9 +17,17 @@ import CategoryPieChart from "@/components/genel/CategoryPieChart";
 import ParetoChart from "@/components/genel/ParetoChart";
 import CategoryRadarChart from "@/components/genel/CategoryRadarChart";
 import RecentTransactions from "@/components/genel/RecentTransactions";
+import PeriodPicker from "@/components/istatistikler/PeriodPicker";
+import PeriodStats from "@/components/istatistikler/PeriodStats";
+import CompareBarChart from "@/components/istatistikler/CompareBarChart";
+import ComparePieChart from "@/components/istatistikler/ComparePieChart";
+import CompareParetoChart from "@/components/istatistikler/CompareParetoChart";
 import { CUSTOM_PALETTE, DEFAULT_CATEGORIES } from "@/lib/categories";
 import {
   aggregate,
+  compareBarData,
+  compareParetoData,
+  diffPercent,
   filterByRange,
   isExpense,
   isSaving,
@@ -31,7 +40,7 @@ import {
 import { formatCurrency, formatRangeLabel } from "@/lib/format";
 import { addCategory, addTransaction, fetchCategories, fetchTransactions } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, Transaction } from "@/lib/types";
+import type { Category, DateRange, Transaction } from "@/lib/types";
 
 function todayStr(): string {
   const d = new Date();
@@ -107,6 +116,26 @@ export default function Home() {
     setRangeEnd(range.end);
   }
 
+  const [periodA, setPeriodA] = useState<DateRange>(() => quickRange("lastmonth"));
+  const [periodB, setPeriodB] = useState<DateRange>(() => quickRange("month"));
+  const [periodSheetOpen, setPeriodSheetOpen] = useState(false);
+
+  function handlePeriodQuickSelect(which: "A" | "B", preset: QuickRangeKey) {
+    const range = quickRange(preset);
+    if (which === "A") setPeriodA(range);
+    else setPeriodB(range);
+  }
+
+  function handlePeriodStartChange(which: "A" | "B", value: string) {
+    const setter = which === "A" ? setPeriodA : setPeriodB;
+    setter((prev) => ({ ...prev, start: value, label: "Özel" }));
+  }
+
+  function handlePeriodEndChange(which: "A" | "B", value: string) {
+    const setter = which === "A" ? setPeriodA : setPeriodB;
+    setter((prev) => ({ ...prev, end: value, label: "Özel" }));
+  }
+
   const filtered = useMemo(
     () => filterByRange(transactions, rangeStart, rangeEnd),
     [transactions, rangeStart, rangeEnd]
@@ -123,6 +152,27 @@ export default function Home() {
   const pareto = useMemo(() => paretoData(agg), [agg]);
   const radar = useMemo(() => radarData(agg), [agg]);
   const radarAverage = radar[0]?.average ?? 0;
+
+  const txA = useMemo(
+    () => filterByRange(transactions, periodA.start, periodA.end).filter(isExpense),
+    [transactions, periodA]
+  );
+  const txB = useMemo(
+    () => filterByRange(transactions, periodB.start, periodB.end).filter(isExpense),
+    [transactions, periodB]
+  );
+  const aggA = useMemo(() => aggregate(txA, categories), [txA, categories]);
+  const aggB = useMemo(() => aggregate(txB, categories), [txB, categories]);
+  const totalA = useMemo(() => txA.reduce((s, t) => s + t.amount, 0), [txA]);
+  const totalB = useMemo(() => txB.reduce((s, t) => s + t.amount, 0), [txB]);
+  const periodDiffPct = useMemo(() => diffPercent(totalA, totalB), [totalA, totalB]);
+  const compareBar = useMemo(() => compareBarData(aggA, aggB, categories), [aggA, aggB, categories]);
+  const comparePareto = useMemo(
+    () => compareParetoData(aggA, aggB, categories, totalA, totalB),
+    [aggA, aggB, categories, totalA, totalB]
+  );
+  const comparePieA = useMemo(() => aggA.filter((c) => c.total > 0), [aggA]);
+  const comparePieB = useMemo(() => aggB.filter((c) => c.total > 0), [aggB]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -176,7 +226,7 @@ export default function Home() {
             {!loadError && loading && (
               <p className="mt-10 text-center text-sm text-muted">Yükleniyor…</p>
             )}
-            {!loadError && !loading && activeTab === "genel" ? (
+            {!loadError && !loading && activeTab === "genel" && (
               <div>
                 <HeroTotal
                   total={totalExpenses}
@@ -216,13 +266,68 @@ export default function Home() {
                   <RecentTransactions transactions={transactions} categories={categories} />
                 </section>
               </div>
-            ) : (
-              !loadError &&
-              !loading && (
-                <p className="mt-10 text-center text-sm text-muted">
-                  İstatistikler — içerik Faz 6&apos;da eklenecek
-                </p>
-              )
+            )}
+
+            {!loadError && !loading && activeTab === "istatistikler" && (
+              <div>
+                <div className="mb-4 flex items-stretch gap-3">
+                  <div className="flex flex-1 flex-col justify-center gap-2 rounded-card bg-card p-4 shadow-card">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-periodA" />
+                      <span className="text-xs font-bold text-ink">Dönem A · {periodA.label}</span>
+                      <span className="ml-auto text-[11px] font-semibold text-muted">
+                        {formatRangeLabel(periodA.start, periodA.end)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-periodB" />
+                      <span className="text-xs font-bold text-ink">Dönem B · {periodB.label}</span>
+                      <span className="ml-auto text-[11px] font-semibold text-muted">
+                        {formatRangeLabel(periodB.start, periodB.end)}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setPeriodSheetOpen(true)}
+                    aria-label="Dönemleri düzenle"
+                    className="flex w-12 flex-shrink-0 items-center justify-center rounded-card bg-card text-ink shadow-card active:scale-95"
+                  >
+                    <Filter size={18} />
+                  </button>
+                </div>
+
+                <PeriodStats totalA={totalA} totalB={totalB} diffPct={periodDiffPct} />
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Bazlı Karşılaştırma</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">Her kategori için iki dönem yan yana</p>
+                  <CompareBarChart data={compareBar} periodALabel={periodA.label} periodBLabel={periodB.label} />
+                </section>
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Dağılımı Karşılaştırma</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">İç içe halkalar — iç: Dönem A, dış: Dönem B</p>
+                  <ComparePieChart
+                    dataA={comparePieA}
+                    dataB={comparePieB}
+                    periodALabel={periodA.label}
+                    periodBLabel={periodB.label}
+                  />
+                </section>
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Pareto Karşılaştırma</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">
+                    Barlar tutar, çizgiler kümülatif % · Dönem A düz, Dönem B kesikli çizgi
+                  </p>
+                  <CompareParetoChart
+                    data={comparePareto}
+                    periodALabel={periodA.label}
+                    periodBLabel={periodB.label}
+                  />
+                </section>
+              </div>
             )}
           </main>
         </div>
@@ -260,6 +365,36 @@ export default function Home() {
           onQuickSelect={handleQuickRange}
           onClose={() => setRangeSheetOpen(false)}
         />
+      </BottomSheet>
+
+      <BottomSheet
+        open={periodSheetOpen}
+        onClose={() => setPeriodSheetOpen(false)}
+        title="Dönemleri Düzenle"
+      >
+        <div className="flex flex-col gap-3">
+          <PeriodPicker
+            which="A"
+            range={periodA}
+            onStartChange={(value) => handlePeriodStartChange("A", value)}
+            onEndChange={(value) => handlePeriodEndChange("A", value)}
+            onQuickSelect={(preset) => handlePeriodQuickSelect("A", preset)}
+          />
+          <PeriodPicker
+            which="B"
+            range={periodB}
+            onStartChange={(value) => handlePeriodStartChange("B", value)}
+            onEndChange={(value) => handlePeriodEndChange("B", value)}
+            onQuickSelect={(preset) => handlePeriodQuickSelect("B", preset)}
+          />
+          <button
+            type="button"
+            onClick={() => setPeriodSheetOpen(false)}
+            className="mt-1 rounded-pill bg-category-yemek py-3 text-sm font-bold text-white shadow-btn-primary"
+          >
+            Tamam
+          </button>
+        </div>
       </BottomSheet>
     </>
   );

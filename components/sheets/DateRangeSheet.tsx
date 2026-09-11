@@ -9,7 +9,8 @@ interface DateRangeSheetProps {
   onClose: () => void;
 }
 
-const QUICK_OPTIONS: { key: QuickRangeKey; label: string }[] = [
+// PeriodPicker.tsx da aynı kısayolları kullanır, bu yüzden export edilir.
+export const QUICK_OPTIONS: { key: QuickRangeKey; label: string }[] = [
   { key: "week", label: "Bu Hafta" },
   { key: "lastweek", label: "Geçen Hafta" },
   { key: "month", label: "Bu Ay" },

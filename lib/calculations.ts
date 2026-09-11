@@ -1,5 +1,14 @@
 import { SAVING_COLOR } from "./categories";
-import type { Category, CategoryTotal, DateRange, ParetoEntry, RadarEntry, Transaction } from "./types";
+import type {
+  Category,
+  CategoryTotal,
+  CompareBarEntry,
+  CompareParetoEntry,
+  DateRange,
+  ParetoEntry,
+  RadarEntry,
+  Transaction,
+} from "./types";
 
 export function isExpense(t: Transaction): boolean {
   return t.type !== "saving";
@@ -148,4 +157,55 @@ export function quickRange(key: QuickRangeKey, today: Date = new Date()): DateRa
       };
     }
   }
+}
+
+// İstatistikler ekranı — dönem karşılaştırma (PRD 7.1). aggA/aggB, her iki
+// dönem için ayrı ayrı çağrılmış aggregate() çıktısıdır.
+
+export function diffPercent(totalA: number, totalB: number): number {
+  if (totalA === 0) return totalB > 0 ? 100 : 0;
+  return ((totalB - totalA) / totalA) * 100;
+}
+
+export function compareBarData(
+  aggA: CategoryTotal[],
+  aggB: CategoryTotal[],
+  categories: Category[]
+): CompareBarEntry[] {
+  return categories
+    .map((c) => ({
+      name: c.name,
+      A: aggA.find((a) => a.id === c.id)?.total ?? 0,
+      B: aggB.find((b) => b.id === c.id)?.total ?? 0,
+    }))
+    .filter((d) => d.A > 0 || d.B > 0);
+}
+
+export function compareParetoData(
+  aggA: CategoryTotal[],
+  aggB: CategoryTotal[],
+  categories: Category[],
+  totalA: number,
+  totalB: number
+): CompareParetoEntry[] {
+  const merged = categories
+    .map((c) => {
+      const a = aggA.find((x) => x.id === c.id)?.total ?? 0;
+      const b = aggB.find((x) => x.id === c.id)?.total ?? 0;
+      return { ...c, a, b, combined: a + b };
+    })
+    .filter((c) => c.combined > 0)
+    .sort((x, y) => y.combined - x.combined);
+
+  let cumA = 0;
+  let cumB = 0;
+  return merged.map((c) => {
+    cumA += c.a;
+    cumB += c.b;
+    return {
+      ...c,
+      cumPctA: totalA ? Number(((cumA / totalA) * 100).toFixed(1)) : 0,
+      cumPctB: totalB ? Number(((cumB / totalB) * 100).toFixed(1)) : 0,
+    };
+  });
 }

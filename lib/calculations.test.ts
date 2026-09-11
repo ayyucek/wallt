@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregate,
+  compareBarData,
+  compareParetoData,
+  diffPercent,
   filterByRange,
   isExpense,
   isSaving,
@@ -196,5 +199,55 @@ describe("quickRange", () => {
   it("'week': Pazar günü de doğru haftaya (bir önceki Pazartesi) düşer", () => {
     const sunday = new Date(2026, 0, 18); // 18 Ocak 2026 — Pazar
     expect(quickRange("week", sunday).start).toBe("2026-01-12");
+  });
+});
+
+describe("diffPercent", () => {
+  it("iki pozitif toplam arasındaki yüzde farkı hesaplar", () => {
+    expect(diffPercent(100, 150)).toBe(50);
+    expect(diffPercent(200, 100)).toBe(-50);
+  });
+
+  it("Dönem A 0 ama Dönem B > 0 ise %100 döner", () => {
+    expect(diffPercent(0, 50)).toBe(100);
+  });
+
+  it("her iki dönem de 0 ise %0 döner", () => {
+    expect(diffPercent(0, 0)).toBe(0);
+  });
+});
+
+describe("compareBarData", () => {
+  it("her kategori için A/B toplamlarını eşler, ikisi de 0 olanları eler", () => {
+    const aggA = aggregate([tx({ categoryId: "yemek", amount: 100 })], categories);
+    const aggB = aggregate([tx({ categoryId: "ulasim", amount: 40 })], categories);
+    const result = compareBarData(aggA, aggB, categories);
+    expect(result).toEqual([
+      { name: "Yemek", A: 100, B: 0 },
+      { name: "Ulaşım", A: 0, B: 40 },
+    ]);
+  });
+});
+
+describe("compareParetoData", () => {
+  it("kombine toplama göre büyükten küçüğe sıralar, her dönem kendi kümülatif %'sini hesaplar", () => {
+    const aggA = aggregate(
+      [tx({ categoryId: "yemek", amount: 50 }), tx({ categoryId: "ulasim", amount: 200 })],
+      categories
+    );
+    const aggB = aggregate([tx({ categoryId: "yemek", amount: 250 })], categories);
+    const result = compareParetoData(aggA, aggB, categories, 250, 250);
+
+    expect(result.map((c) => c.id)).toEqual(["yemek", "ulasim"]);
+    const yemek = result.find((c) => c.id === "yemek")!;
+    expect(yemek).toMatchObject({ a: 50, b: 250, combined: 300, cumPctA: 20, cumPctB: 100 });
+    const ulasim = result.find((c) => c.id === "ulasim")!;
+    expect(ulasim).toMatchObject({ a: 200, b: 0, combined: 200, cumPctA: 100, cumPctB: 100 });
+  });
+
+  it("her iki dönemde de harcaması olmayan kategorileri eler", () => {
+    const aggA = aggregate([], categories);
+    const aggB = aggregate([], categories);
+    expect(compareParetoData(aggA, aggB, categories, 0, 0)).toEqual([]);
   });
 });

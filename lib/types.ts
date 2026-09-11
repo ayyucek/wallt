@@ -39,3 +39,18 @@ export interface RadarEntry {
   value: number;
   average: number;
 }
+
+// İstatistikler ekranı — dönem karşılaştırma (PRD 7.1)
+export interface CompareBarEntry {
+  name: string;
+  A: number;
+  B: number;
+}
+
+export interface CompareParetoEntry extends Category {
+  a: number;
+  b: number;
+  combined: number;
+  cumPctA: number;
+  cumPctB: number;
+}
