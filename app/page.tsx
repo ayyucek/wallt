@@ -23,9 +23,9 @@ import {
   withSavingsBar,
 } from "@/lib/calculations";
 import { formatRangeLabel } from "@/lib/format";
-import { generateSeedData } from "@/lib/seed";
+import { fetchCategories, fetchTransactions } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
-import type { Transaction } from "@/lib/types";
+import type { Category, Transaction } from "@/lib/types";
 
 function todayStr(): string {
   const d = new Date();
@@ -37,6 +37,17 @@ function thisMonthStartStr(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
+// Supabase'in PostgrestError'ı gerçek bir Error instance'ı değil, düz bir
+// { message, details, hint, code } nesnesidir — bu yüzden err.message'a
+// instanceof Error kontrolü olmadan da erişebilmemiz gerekiyor.
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "object" && err !== null && "message" in err) {
+    return String((err as { message: unknown }).message);
+  }
+  return "Veriler yüklenemedi.";
+}
+
 export default function Home() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabKey>("genel");
@@ -44,16 +55,34 @@ export default function Home() {
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const [rangeSheetOpen, setRangeSheetOpen] = useState(false);
 
-  // generateSeedData() Math.random() kullanır; server render ile client
-  // hydration'ı aynı veriyi üretmeyeceğinden mock veri sadece mount sonrası
-  // client'ta oluşturulur (aksi halde hydration mismatch oluşur).
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
   useEffect(() => {
-    // Bilinçli istisna: bu setState, dış/rastgele bir kaynağı (mock veri)
-    // yalnızca client'ta senkronize ediyor — hydration mismatch'ten kaçınmak
-    // için render sırasında hesaplanamaz.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTransactions(generateSeedData(DEFAULT_CATEGORIES));
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const [txs, cats] = await Promise.all([fetchTransactions(), fetchCategories()]);
+        if (cancelled) return;
+        setTransactions(txs);
+        setCategories(cats);
+      } catch (err) {
+        if (cancelled) return;
+        setLoadError(errorMessage(err));
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const [rangeStart] = useState(thisMonthStartStr);
@@ -66,7 +95,7 @@ export default function Home() {
   const expenses = useMemo(() => filtered.filter(isExpense), [filtered]);
   const savings = useMemo(() => filtered.filter(isSaving), [filtered]);
 
-  const agg = useMemo(() => aggregate(expenses, DEFAULT_CATEGORIES), [expenses]);
+  const agg = useMemo(() => aggregate(expenses, categories), [expenses, categories]);
   const aggSorted = useMemo(() => [...agg].sort((a, b) => b.total - a.total), [agg]);
   const totalExpenses = useMemo(() => expenses.reduce((s, t) => s + t.amount, 0), [expenses]);
   const totalSavings = useMemo(() => savings.reduce((s, t) => s + t.amount, 0), [savings]);
@@ -92,7 +121,15 @@ export default function Home() {
       />
 
       <main className="flex-1 overflow-y-auto px-4 pb-28">
-        {activeTab === "genel" ? (
+        {loadError && (
+          <p className="mt-6 rounded-card bg-card p-4 text-center text-sm font-semibold text-category-saglik shadow-card">
+            Veriler yüklenemedi: {loadError}
+          </p>
+        )}
+        {!loadError && loading && (
+          <p className="mt-10 text-center text-sm text-muted">Yükleniyor…</p>
+        )}
+        {!loadError && !loading && activeTab === "genel" ? (
           <div>
             <HeroTotal
               total={totalExpenses}
@@ -129,13 +166,16 @@ export default function Home() {
 
             <section className="mb-4 rounded-card bg-card p-4 shadow-card">
               <h3 className="mb-3 text-sm font-bold text-ink">Son Hareketler</h3>
-              <RecentTransactions transactions={transactions} categories={DEFAULT_CATEGORIES} />
+              <RecentTransactions transactions={transactions} categories={categories} />
             </section>
           </div>
         ) : (
-          <p className="mt-10 text-center text-sm text-muted">
-            İstatistikler — içerik Faz 6&apos;da eklenecek
-          </p>
+          !loadError &&
+          !loading && (
+            <p className="mt-10 text-center text-sm text-muted">
+              İstatistikler — içerik Faz 6&apos;da eklenecek
+            </p>
+          )
         )}
       </main>
 
