@@ -1,0 +1,239 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+import { Plus, X } from "lucide-react";
+import type { Category, Transaction, TransactionType } from "@/lib/types";
+
+interface AddExpenseSheetProps {
+  categories: Category[];
+  onSubmit: (input: Omit<Transaction, "id">) => Promise<void>;
+  onAddCategory: (name: string) => Promise<Category>;
+  onClose: () => void;
+}
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function toDatetimeLocalValue(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+export default function AddExpenseSheet({
+  categories,
+  onSubmit,
+  onAddCategory,
+  onClose,
+}: AddExpenseSheetProps) {
+  const [entryType, setEntryType] = useState<TransactionType>("expense");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [amount, setAmount] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState(categories[0]?.id ?? "");
+  const [dateTimeValue, setDateTimeValue] = useState(() => toDatetimeLocalValue(new Date()));
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const isSaving = entryType === "saving";
+  const parsedAmount = parseFloat(amount);
+  const canSubmit = Boolean(amount) && parsedAmount > 0 && title.trim() !== "" && dateTimeValue;
+
+  async function handleAddCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setError(null);
+    try {
+      const category = await onAddCategory(name);
+      setSelectedCategoryId(category.id);
+      setNewCategoryName("");
+      setAddingCategory(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kategori eklenemedi.");
+    }
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!canSubmit || submitting) return;
+    setError(null);
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        type: entryType,
+        title: title.trim(),
+        description: description.trim(),
+        amount: parsedAmount,
+        categoryId: selectedCategoryId,
+        timestamp: new Date(dateTimeValue).toISOString(),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Kayıt eklenemedi.");
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex rounded-pill bg-page p-1">
+        <button
+          type="button"
+          onClick={() => setEntryType("expense")}
+          className={`flex-1 rounded-pill py-2 text-sm font-bold transition-colors ${
+            entryType === "expense" ? "bg-category-yemek text-white" : "text-muted"
+          }`}
+        >
+          Harcama
+        </button>
+        <button
+          type="button"
+          onClick={() => setEntryType("saving")}
+          className={`flex-1 rounded-pill py-2 text-sm font-bold transition-colors ${
+            isSaving ? "bg-saving text-white" : "text-muted"
+          }`}
+        >
+          Tasarruf
+        </button>
+      </div>
+
+      {isSaving && (
+        <p className="text-xs font-medium text-muted">
+          Harcamadığın parayı buraya yaz — bu, dönem boyunca ne kadar tasarruf ettiğini gösterecek.
+        </p>
+      )}
+
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-muted">Başlık</label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={isSaving ? "örn. Kahve almadım" : "örn. Öğle yemeği"}
+          className="w-full rounded-xl bg-page px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-muted">Açıklama (opsiyonel)</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Ek not..."
+          rows={2}
+          className="w-full resize-y rounded-xl bg-page px-3 py-2.5 text-sm font-medium text-ink outline-none"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-muted">
+          {isSaving ? "Tasarruf Edilen Tutar (₺)" : "Tutar (₺)"}
+        </label>
+        <input
+          type="number"
+          min="0"
+          step="1"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0"
+          className="w-full rounded-xl bg-page px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+        />
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-muted">Tarih ve Saat</label>
+        <input
+          type="datetime-local"
+          value={dateTimeValue}
+          onChange={(e) => setDateTimeValue(e.target.value)}
+          className="w-full rounded-xl bg-page px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+        />
+        <p className="mt-1.5 text-xs font-medium text-muted">
+          Varsayılan olarak şu an dolu gelir, istersen değiştirebilirsin.
+        </p>
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold text-muted">
+          {isSaving ? "Hangi kategoriden tasarruf ettin?" : "Kategori"}
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {categories.map((c) => {
+            const active = selectedCategoryId === c.id;
+            return (
+              <button
+                type="button"
+                key={c.id}
+                onClick={() => setSelectedCategoryId(c.id)}
+                className="flex items-center gap-1.5 rounded-pill px-3 py-2 text-xs font-semibold"
+                style={active ? { background: c.color, color: "#fff" } : { background: "var(--color-page)", color: "var(--color-ink)" }}
+              >
+                <span className="h-2 w-2 rounded-full" style={{ background: active ? "rgba(255,255,255,.85)" : c.color }} />
+                {c.name}
+              </button>
+            );
+          })}
+          {!addingCategory && (
+            <button
+              type="button"
+              onClick={() => setAddingCategory(true)}
+              className="flex items-center gap-1 rounded-pill border border-dashed border-muted px-3 py-2 text-xs font-semibold text-muted"
+            >
+              <Plus size={12} /> Yeni
+            </button>
+          )}
+        </div>
+        {addingCategory && (
+          <div className="mt-2 flex gap-1.5">
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Kategori adı"
+              className="flex-1 rounded-xl bg-page px-3 py-2 text-sm font-semibold text-ink outline-none"
+            />
+            <button
+              type="button"
+              onClick={handleAddCategory}
+              className="rounded-pill bg-page px-3 py-2 text-xs font-bold text-ink"
+            >
+              Ekle
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAddingCategory(false);
+                setNewCategoryName("");
+              }}
+              className="rounded-pill bg-page px-2.5 py-2 text-ink"
+              aria-label="Vazgeç"
+            >
+              <X size={13} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {error && <p className="text-xs font-semibold text-category-saglik">{error}</p>}
+
+      <div className="mt-1 flex gap-2">
+        <button
+          type="submit"
+          disabled={!canSubmit || submitting}
+          className={`flex flex-1 items-center justify-center gap-1.5 rounded-pill py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-45 disabled:shadow-none ${
+            isSaving ? "bg-saving" : "bg-category-yemek"
+          }`}
+        >
+          <Plus size={14} /> {submitting ? "..." : isSaving ? "Tasarruf Ekle" : "Harcama Ekle"}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-pill bg-page px-4 py-3 text-sm font-bold text-ink"
+        >
+          Vazgeç
+        </button>
+      </div>
+    </form>
+  );
+}

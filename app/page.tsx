@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import TopBar from "@/components/layout/TopBar";
 import BottomTabBar, { type TabKey } from "@/components/layout/BottomTabBar";
 import BottomSheet from "@/components/sheets/BottomSheet";
+import AddExpenseSheet from "@/components/sheets/AddExpenseSheet";
+import Toast from "@/components/ui/Toast";
 import HeroTotal from "@/components/genel/HeroTotal";
 import SavingsSummaryCard from "@/components/genel/SavingsSummaryCard";
 import CategoryBarChart from "@/components/genel/CategoryBarChart";
@@ -12,7 +14,7 @@ import CategoryPieChart from "@/components/genel/CategoryPieChart";
 import ParetoChart from "@/components/genel/ParetoChart";
 import CategoryRadarChart from "@/components/genel/CategoryRadarChart";
 import RecentTransactions from "@/components/genel/RecentTransactions";
-import { DEFAULT_CATEGORIES } from "@/lib/categories";
+import { CUSTOM_PALETTE, DEFAULT_CATEGORIES } from "@/lib/categories";
 import {
   aggregate,
   filterByRange,
@@ -22,8 +24,8 @@ import {
   radarData,
   withSavingsBar,
 } from "@/lib/calculations";
-import { formatRangeLabel } from "@/lib/format";
-import { fetchCategories, fetchTransactions } from "@/lib/storage";
+import { formatCurrency, formatRangeLabel } from "@/lib/format";
+import { addCategory, addTransaction, fetchCategories, fetchTransactions } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
 import type { Category, Transaction } from "@/lib/types";
 
@@ -85,6 +87,13 @@ export default function Home() {
     };
   }, []);
 
+  const [toast, setToast] = useState<string | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2600);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   const [rangeStart] = useState(thisMonthStartStr);
   const [rangeEnd] = useState(todayStr);
 
@@ -110,6 +119,26 @@ export default function Home() {
     await supabase.auth.signOut();
     router.push("/login");
     router.refresh();
+  }
+
+  async function handleAddTransaction(input: Omit<Transaction, "id">) {
+    const tx = await addTransaction(input);
+    setTransactions((prev) =>
+      [...prev, tx].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    );
+    setAddSheetOpen(false);
+    setToast(
+      input.type === "saving"
+        ? `Tasarruf kaydedildi — ${formatCurrency(input.amount)}`
+        : `"${input.title}" eklendi — ${formatCurrency(input.amount)}`
+    );
+  }
+
+  async function handleAddCategory(name: string): Promise<Category> {
+    const color = CUSTOM_PALETTE[categories.length % CUSTOM_PALETTE.length];
+    const category = await addCategory({ name, color });
+    setCategories((prev) => [...prev, category]);
+    return category;
   }
 
   return (
@@ -179,6 +208,8 @@ export default function Home() {
         )}
       </main>
 
+      <Toast message={toast} />
+
       <BottomTabBar
         active={activeTab}
         onTabChange={setActiveTab}
@@ -186,7 +217,12 @@ export default function Home() {
       />
 
       <BottomSheet open={addSheetOpen} onClose={() => setAddSheetOpen(false)} title="Harcama Ekle">
-        <p className="text-sm text-muted">Form içeriği Faz 4&apos;te eklenecek.</p>
+        <AddExpenseSheet
+          categories={categories}
+          onSubmit={handleAddTransaction}
+          onAddCategory={handleAddCategory}
+          onClose={() => setAddSheetOpen(false)}
+        />
       </BottomSheet>
 
       <BottomSheet open={exportSheetOpen} onClose={() => setExportSheetOpen(false)} title="Rapor Önizleme">
