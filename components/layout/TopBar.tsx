@@ -8,8 +8,9 @@ interface TopBarProps {
 
 export default function TopBar({ onExportClick, onShareClick, onLogoutClick }: TopBarProps) {
   return (
-    <header className="flex items-center justify-between px-4 py-3">
-      <span className="font-display text-xl font-bold text-ink">WALLT</span>
+    <header className="flex items-center justify-between px-4 py-3 lg:justify-end lg:px-8">
+      {/* lg ve üzerinde logo Sidebar'da tekrar gösterilir (PRD 6.3), burada gizlenir. */}
+      <span className="font-display text-xl font-bold text-ink lg:hidden">WALLT</span>
       <div className="flex gap-2">
         <button
           type="button"

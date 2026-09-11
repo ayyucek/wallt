@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import TopBar from "@/components/layout/TopBar";
 import BottomTabBar, { type TabKey } from "@/components/layout/BottomTabBar";
+import Sidebar from "@/components/layout/Sidebar";
 import BottomSheet from "@/components/sheets/BottomSheet";
 import AddExpenseSheet from "@/components/sheets/AddExpenseSheet";
 import Toast from "@/components/ui/Toast";
@@ -143,78 +144,90 @@ export default function Home() {
 
   return (
     <>
-      <TopBar
-        onExportClick={() => setExportSheetOpen(true)}
-        onShareClick={() => {}}
-        onLogoutClick={handleLogout}
-      />
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        <Sidebar
+          active={activeTab}
+          onTabChange={setActiveTab}
+          onAddClick={() => setAddSheetOpen(true)}
+        />
 
-      <main className="flex-1 overflow-y-auto px-4 pb-28">
-        {loadError && (
-          <p className="mt-6 rounded-card bg-card p-4 text-center text-sm font-semibold text-category-saglik shadow-card">
-            Veriler yüklenemedi: {loadError}
-          </p>
-        )}
-        {!loadError && loading && (
-          <p className="mt-10 text-center text-sm text-muted">Yükleniyor…</p>
-        )}
-        {!loadError && !loading && activeTab === "genel" ? (
-          <div>
-            <HeroTotal
-              total={totalExpenses}
-              rangeLabel={formatRangeLabel(rangeStart, rangeEnd)}
-              onFilterClick={() => setRangeSheetOpen(true)}
-            />
-            <SavingsSummaryCard total={totalSavings} />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <TopBar
+            onExportClick={() => setExportSheetOpen(true)}
+            onShareClick={() => {}}
+            onLogoutClick={handleLogout}
+          />
 
-            <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-              <h3 className="mb-1 text-sm font-bold text-ink">Kategoriye Göre Harcama</h3>
-              <p className="mb-3 text-xs font-medium text-muted">En çok harcanandan en aza sıralı</p>
-              <CategoryBarChart data={barData} />
-            </section>
-
-            <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-              <h3 className="mb-1 text-sm font-bold text-ink">Kategori Dağılımı</h3>
-              <p className="mb-3 text-xs font-medium text-muted">Oransal dağılım</p>
-              <CategoryPieChart data={pieData} />
-            </section>
-
-            <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-              <h3 className="mb-1 text-sm font-bold text-ink">Pareto / Kümülatif Etki</h3>
-              <p className="mb-3 text-xs font-medium text-muted">
-                Kategoriler büyükten küçüğe, %80 referans çizgisiyle
+          <main className="flex-1 overflow-y-auto px-4 pb-28 lg:px-8 lg:pb-8">
+            {loadError && (
+              <p className="mt-6 rounded-card bg-card p-4 text-center text-sm font-semibold text-category-saglik shadow-card">
+                Veriler yüklenemedi: {loadError}
               </p>
-              <ParetoChart data={pareto} />
-            </section>
+            )}
+            {!loadError && loading && (
+              <p className="mt-10 text-center text-sm text-muted">Yükleniyor…</p>
+            )}
+            {!loadError && !loading && activeTab === "genel" ? (
+              <div>
+                <HeroTotal
+                  total={totalExpenses}
+                  rangeLabel={formatRangeLabel(rangeStart, rangeEnd)}
+                  onFilterClick={() => setRangeSheetOpen(true)}
+                />
+                <SavingsSummaryCard total={totalSavings} />
 
-            <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-              <h3 className="mb-1 text-sm font-bold text-ink">Kategori Ağırlık Haritası</h3>
-              <p className="mb-3 text-xs font-medium text-muted">Her kategorinin ortalamaya göre konumu</p>
-              <CategoryRadarChart data={radar} average={radarAverage} />
-            </section>
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Kategoriye Göre Harcama</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">En çok harcanandan en aza sıralı</p>
+                  <CategoryBarChart data={barData} />
+                </section>
 
-            <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-              <h3 className="mb-3 text-sm font-bold text-ink">Son Hareketler</h3>
-              <RecentTransactions transactions={transactions} categories={categories} />
-            </section>
-          </div>
-        ) : (
-          !loadError &&
-          !loading && (
-            <p className="mt-10 text-center text-sm text-muted">
-              İstatistikler — içerik Faz 6&apos;da eklenecek
-            </p>
-          )
-        )}
-      </main>
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Dağılımı</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">Oransal dağılım</p>
+                  <CategoryPieChart data={pieData} />
+                </section>
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Pareto / Kümülatif Etki</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">
+                    Kategoriler büyükten küçüğe, %80 referans çizgisiyle
+                  </p>
+                  <ParetoChart data={pareto} />
+                </section>
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Ağırlık Haritası</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">Her kategorinin ortalamaya göre konumu</p>
+                  <CategoryRadarChart data={radar} average={radarAverage} />
+                </section>
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-3 text-sm font-bold text-ink">Son Hareketler</h3>
+                  <RecentTransactions transactions={transactions} categories={categories} />
+                </section>
+              </div>
+            ) : (
+              !loadError &&
+              !loading && (
+                <p className="mt-10 text-center text-sm text-muted">
+                  İstatistikler — içerik Faz 6&apos;da eklenecek
+                </p>
+              )
+            )}
+          </main>
+        </div>
+      </div>
 
       <Toast message={toast} />
 
-      <BottomTabBar
-        active={activeTab}
-        onTabChange={setActiveTab}
-        onAddClick={() => setAddSheetOpen(true)}
-      />
+      <div className="lg:hidden">
+        <BottomTabBar
+          active={activeTab}
+          onTabChange={setActiveTab}
+          onAddClick={() => setAddSheetOpen(true)}
+        />
+      </div>
 
       <BottomSheet open={addSheetOpen} onClose={() => setAddSheetOpen(false)} title="Harcama Ekle">
         <AddExpenseSheet
