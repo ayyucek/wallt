@@ -157,6 +157,14 @@ Dönem A ve Dönem B, ayrı renk kodları taşır (Dönem A = sıcak turuncu, D�
 
 Üç istatistik kartı (Dönem A toplamı / Dönem B toplamı / Fark %) grafiklerin üzerinde her zaman görünür durur.
 
+**12 Eylül 2026, 2. revizyon — Pareto sağ ekseni, adaptif tarih çözünürlüğü:** Pareto grafiğinin sağ ekseni, Dönem A'da o kümülatif yüzdeye hangi tarihte ulaşıldığını gösterir (yalnızca Dönem A takip edilir — Dönem B ile hizalama gerekmez). Çözünürlük, Dönem A'nın uzunluğuna göre otomatik seçilir, çünkü sabit günlük çözünürlük uzun dönemlerde (örn. 1 yıl) eksende yüzlerce okunaksız tik üretir:
+- Dönem ≤ 2 hafta → gün bazında (örn. "15 Eyl")
+- Dönem > 2 hafta ve ≤ 3 ay → hafta bazında (bucket'ın son günü, örn. "15 Eyl")
+- Dönem > 3 ay ve ≤ 12 ay → ay bazında (yalnızca ay adı, örn. "Eyl")
+- Dönem > 1 yıl → dönem 10 eşit zaman dilimine bölünür, her dilim sınırının tarihi gösterilir
+
+Grafiğin altında, o an hangi çözünürlüğün aktif olduğunu belirten küçük bir not bulunur (örn. "Sağ eksen: Bu Ay döneminde günlük çözünürlük"). Bkz. Teknik Analiz Dokümanı Bölüm 5.5.
+
 ### 7.2 Tasarruf Görselleştirmesi
 
 - Seçili dönemde toplam tasarruf > 0 ise, Genel Bakış'ta hero tutarın altında ayrı bir **tasarruf özet kartı** gösterilir (yeşil vurgu, toplam tasarruf tutarı)

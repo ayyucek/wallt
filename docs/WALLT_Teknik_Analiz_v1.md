@@ -343,6 +343,26 @@ Prototipin kendi "Grafikler" sekmesi v1'e eklendi — dördüncü sekme (bkz. PR
 - **`components/layout/Sidebar.tsx`:** dördüncü `NavItem` ("Grafikler", `PieChart` ikonu) eklendi — masaüstünde etiketler değişmeden kalıyor, ikon-only kısıtı yalnızca mobil `BottomTabBar`'a özgü.
 - **`app/globals.css`:** `--color-tabD: #ffc15e;` eklendi (bkz. Bölüm 4).
 
+### 5.5 Pareto Karşılaştırma — Adaptif Tarih Çözünürlüğü (12 Eylül 2026, 3. revizyon)
+
+Prototipteki `buildCumulativeDateMap(period, txs)` (bkz. `docs/WALLT_Prototype.jsx`), Pareto Karşılaştırma grafiğinin sağ eksenini — Dönem A'da her kümülatif yüzdeye hangi tarihte ulaşıldığını gösteren `tickFormatter` — her zaman **gün bazında** hesaplıyordu (dayCount = dönem uzunluğu gün cinsinden). Bu özellik WALLT'a hiç taşınmamıştı (`CompareParetoChart.tsx`'in sağ ekseni yalnızca düz `0/25/50/75/100` etiketleri gösteriyordu, formatter yoktu). Bu revizyonla, özellik WALLT'a **ilk kez ve doğrudan adaptif olarak** eklendi — sabit gün bazlı çözünürlük, uzun dönemlerde (örn. 1 yıl → 365 tik) eksende okunaksız/anlamsız bir yığılmaya yol açardı.
+
+**`lib/calculations.ts`'e eklenen fonksiyonlar:**
+- `periodGranularity(start, end): DateGranularity` — `"day" | "week" | "month" | "decile"` döner. Eşikler gerçek takvim ayı aritmetiğiyle (`addMonths`, yeni özel yardımcı) hesaplanır, sabit gün sayıları (90/365) KULLANILMAZ:
+  - ≤ 14 gün (2 hafta) → `"day"`
+  - > 14 gün ve ≤ 3 takvim ayı → `"week"`
+  - > 3 ay ve ≤ 12 ay → `"month"`
+  - > 12 ay → `"decile"`
+- `granularityLabel(granularity): string` — UI notu için okunabilir etiket (`"günlük"`/`"haftalık"`/`"aylık"`/`"10 dilimlik"`).
+- `buildCumulativeDateMap(transactions, start, end): (pct: number) => string` — prototipin `percentToDate`'inin adaptif karşılığı; granülerliğe göre transactionları bucket'lar (gün: her gün ayrı; hafta: dönem başlangıcından 7'şer günlük gruplar; ay: **gerçek takvim ayları**, ilk/son ay kısmi olabilir; 10 dilim: dönem süresine göre 10 eşit zaman aralığı — takvimle hizalı değil), her bucket için kümülatif toplamı hesaplar ve verilen `pct`'e ilk ulaşan bucket'ın **formatlanmış tarih etiketini doğrudan döner** (bileşene ham `Date` değil, hazır string veriliyor — formatlama mantığı `lib/`'de kalır, "dumb component" kuralıyla tutarlı).
+  - Format: gün ve hafta granülerliğinde `"15 Eyl"` (prototipteki `formatShortDate` ile aynı `toLocaleDateString("tr-TR", { day: "numeric", month: "short" })`); ay granülerliğinde **yalnızca ay adı** (`"Eyl"`); 10 dilimde dilim sınırının tarihi (`"15 Eyl"` formatında).
+  - **Bilinen basitleştirme:** ay granülerliğinde yıl gösterilmez — >3 ay ≤1 yıl aralığında aynı ay adının iki kez görünmesi (örn. Ocak'tan Ocak'a tam 1 yıl) pratikte nadir bir uç durumdur, ekstra karmaşıklığa değmedi.
+  - Dönem A'da hiç harcama yoksa (`total === 0`) tüm tikler için boş string döner (prototipteki `percentToDate`'in `null` dönüşüne karşılık gelir).
+
+**Bağlantı (`page.tsx` → `CompareParetoChart.tsx`):** `page.tsx`'te zaten var olan `periodA`/`txA`'dan iki yeni `useMemo` türetilir: `periodADateAt = buildCumulativeDateMap(txA, periodA.start, periodA.end)` ve `periodAGranularityLabel = granularityLabel(periodGranularity(periodA.start, periodA.end))`. Bunlar `CompareParetoChart`'a iki yeni prop olarak geçirilir; bileşen granülerliği bilmez, yalnızca sağ `<YAxis>`'in `tickFormatter`'ında `periodADateAt` çağrısını yapar ve grafiğin altına `periodAGranularityLabel`'i kullanan küçük bir çözünürlük notu (`"Sağ eksen: {periodALabel} döneminde {granülerlik} çözünürlük"`) render eder.
+
+**Test:** `lib/calculations.test.ts`'e `periodGranularity`/`granularityLabel`/`buildCumulativeDateMap` için birim testleri eklendi — dört granülerlik seviyesinin sınır koşulları (`periodGranularity`) ve her granülerlikte bucket/format doğruluğu (`buildCumulativeDateMap`) ayrı ayrı kapsanıyor.
+
 ---
 
 ## 6. Build Sırası (Fazlar)

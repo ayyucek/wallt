@@ -125,6 +125,10 @@ function endOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0);
 }
 
+function addMonths(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+}
+
 function toISODate(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -204,4 +208,130 @@ export function compareParetoData(
       cumPctB: totalB ? Number(((cumB / totalB) * 100).toFixed(1)) : 0,
     };
   });
+}
+
+// Pareto Karşılaştırma grafiğinin sağ ekseni: Dönem A'da o kümülatif yüzdeye
+// hangi tarihte ulaşıldığını gösterir (bkz. Teknik Analiz 5.5). Çözünürlük,
+// Dönem A'nın uzunluğuna göre adaptiftir — kısa dönemlerde gün bazında,
+// uzun dönemlerde ay/10-dilim bazında, aksi halde eksen okunaksız olur.
+export type DateGranularity = "day" | "week" | "month" | "decile";
+
+const GRANULARITY_LABELS: Record<DateGranularity, string> = {
+  day: "günlük",
+  week: "haftalık",
+  month: "aylık",
+  decile: "10 dilimlik",
+};
+
+export function granularityLabel(granularity: DateGranularity): string {
+  return GRANULARITY_LABELS[granularity];
+}
+
+// Eşikler gerçek takvim ayı aritmetiğiyle hesaplanır (addMonths), sabit gün
+// sayıları (90/365 gibi) KULLANILMAZ — ay uzunluğu farklarından kaynaklanan
+// kaymaları önler. ≤2 hafta = ≤14 gün fark.
+export function periodGranularity(start: string, end: string): DateGranularity {
+  const s = new Date(`${start}T00:00:00`);
+  const e = new Date(`${end}T00:00:00`);
+  if (e <= addDays(s, 14)) return "day";
+  if (e <= addMonths(s, 3)) return "week";
+  if (e <= addMonths(s, 12)) return "month";
+  return "decile";
+}
+
+// Dönem A'nın transactionları + tarih aralığından, granülerliğe göre
+// bucket'lanmış kümülatif toplamlar üretir ve verilen kümülatif yüzdeye
+// (0-100) ilk ulaşan bucket'ın tarih etiketini döndüren bir formatter
+// fonksiyonu döner. `transactions` zaten isExpense + döneme filtrelenmiş
+// olmalıdır (page.tsx'teki txA gibi).
+export function buildCumulativeDateMap(
+  transactions: Transaction[],
+  start: string,
+  end: string
+): (pct: number) => string {
+  const granularity = periodGranularity(start, end);
+  const s = new Date(`${start}T00:00:00`);
+  const e = new Date(`${end}T00:00:00`);
+  const total = transactions.reduce((sum, t) => sum + t.amount, 0);
+  const dayCount = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86400000) + 1);
+
+  const dayIndexOf = (t: Transaction) =>
+    Math.round((new Date(`${txDateStr(t.timestamp)}T00:00:00`).getTime() - s.getTime()) / 86400000);
+
+  let buckets: { end: Date; cum: number }[];
+
+  if (granularity === "day") {
+    const totals = new Array(dayCount).fill(0);
+    transactions.forEach((t) => {
+      const idx = dayIndexOf(t);
+      if (idx >= 0 && idx < dayCount) totals[idx] += t.amount;
+    });
+    let cum = 0;
+    buckets = totals.map((amt, i) => {
+      cum += amt;
+      return { end: addDays(s, i), cum };
+    });
+  } else if (granularity === "week") {
+    const bucketCount = Math.ceil(dayCount / 7);
+    const totals = new Array(bucketCount).fill(0);
+    transactions.forEach((t) => {
+      const idx = dayIndexOf(t);
+      if (idx >= 0 && idx < dayCount) totals[Math.floor(idx / 7)] += t.amount;
+    });
+    let cum = 0;
+    buckets = totals.map((amt, i) => {
+      cum += amt;
+      const bucketEndDayIdx = Math.min(dayCount - 1, (i + 1) * 7 - 1);
+      return { end: addDays(s, bucketEndDayIdx), cum };
+    });
+  } else if (granularity === "month") {
+    const monthStarts: Date[] = [];
+    for (let m = startOfMonth(s); m <= e; m = addMonths(m, 1)) monthStarts.push(m);
+    const totals = new Array(monthStarts.length).fill(0);
+    transactions.forEach((t) => {
+      const d = new Date(`${txDateStr(t.timestamp)}T00:00:00`);
+      for (let i = monthStarts.length - 1; i >= 0; i--) {
+        if (d >= monthStarts[i]) {
+          totals[i] += t.amount;
+          break;
+        }
+      }
+    });
+    let cum = 0;
+    buckets = totals.map((amt, i) => {
+      cum += amt;
+      const isLast = i === monthStarts.length - 1;
+      const bucketEnd = isLast ? e : addDays(endOfMonth(monthStarts[i]), 0);
+      return { end: bucketEnd, cum };
+    });
+  } else {
+    const bucketCount = 10;
+    const totalMs = e.getTime() - s.getTime();
+    const totals = new Array(bucketCount).fill(0);
+    transactions.forEach((t) => {
+      const d = new Date(`${txDateStr(t.timestamp)}T00:00:00`);
+      const offset = d.getTime() - s.getTime();
+      const idx = totalMs > 0 ? Math.min(bucketCount - 1, Math.max(0, Math.floor((offset / totalMs) * bucketCount))) : 0;
+      totals[idx] += t.amount;
+    });
+    let cum = 0;
+    buckets = totals.map((amt, i) => {
+      cum += amt;
+      const bucketEndMs = s.getTime() + (totalMs * (i + 1)) / bucketCount;
+      return { end: new Date(bucketEndMs), cum };
+    });
+  }
+
+  const formatDate = (d: Date) =>
+    granularity === "month"
+      ? d.toLocaleDateString("tr-TR", { month: "short" })
+      : d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+
+  return (pct: number) => {
+    if (!total) return "";
+    for (const bucket of buckets) {
+      if ((bucket.cum / total) * 100 >= pct) return formatDate(bucket.end);
+    }
+    return formatDate(buckets[buckets.length - 1]?.end ?? e);
+  };
 }

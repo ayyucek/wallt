@@ -27,6 +27,9 @@ import {
   aggregate,
   compareBarData,
   compareParetoData,
+  buildCumulativeDateMap,
+  granularityLabel,
+  periodGranularity,
   diffPercent,
   filterByRange,
   isExpense,
@@ -208,6 +211,14 @@ export default function Home() {
     () => compareParetoData(aggA, aggB, categories, totalA, totalB),
     [aggA, aggB, categories, totalA, totalB]
   );
+  const periodADateAt = useMemo(
+    () => buildCumulativeDateMap(txA, periodA.start, periodA.end),
+    [txA, periodA]
+  );
+  const periodAGranularityLabel = useMemo(
+    () => granularityLabel(periodGranularity(periodA.start, periodA.end)),
+    [periodA]
+  );
 
   async function handleLogout() {
     const supabase = createClient();
@@ -381,6 +392,8 @@ export default function Home() {
                     data={comparePareto}
                     periodALabel={periodA.label}
                     periodBLabel={periodB.label}
+                    periodADateAt={periodADateAt}
+                    periodAGranularityLabel={periodAGranularityLabel}
                   />
                 </section>
               </div>

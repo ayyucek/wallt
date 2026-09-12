@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   aggregate,
+  buildCumulativeDateMap,
   compareBarData,
   compareParetoData,
   diffPercent,
   filterByRange,
+  granularityLabel,
   isExpense,
   isSaving,
   paretoData,
+  periodGranularity,
   quickRange,
   radarData,
   txDateStr,
@@ -265,5 +268,84 @@ describe("compareParetoData", () => {
     const aggA = aggregate([], categories);
     const aggB = aggregate([], categories);
     expect(compareParetoData(aggA, aggB, categories, 0, 0)).toEqual([]);
+  });
+});
+
+describe("periodGranularity", () => {
+  it("≤2 hafta (14 gün) için gün bazında döner", () => {
+    expect(periodGranularity("2026-01-01", "2026-01-15")).toBe("day");
+  });
+
+  it(">2 hafta ve ≤3 ay için hafta bazında döner", () => {
+    expect(periodGranularity("2026-01-01", "2026-01-16")).toBe("week");
+    expect(periodGranularity("2026-01-01", "2026-04-01")).toBe("week");
+  });
+
+  it(">3 ay ve ≤12 ay için ay bazında döner", () => {
+    expect(periodGranularity("2026-01-01", "2026-04-15")).toBe("month");
+    expect(periodGranularity("2026-01-01", "2027-01-01")).toBe("month");
+  });
+
+  it(">1 yıl için 10 dilime döner", () => {
+    expect(periodGranularity("2026-01-01", "2027-01-02")).toBe("decile");
+  });
+});
+
+describe("granularityLabel", () => {
+  it("her granülerlik için okunabilir bir etiket döner", () => {
+    expect(granularityLabel("day")).toBe("günlük");
+    expect(granularityLabel("week")).toBe("haftalık");
+    expect(granularityLabel("month")).toBe("aylık");
+    expect(granularityLabel("decile")).toBe("10 dilimlik");
+  });
+});
+
+describe("buildCumulativeDateMap", () => {
+  it("gün bazında: %100'e ulaşılan günü döner", () => {
+    const txs = [
+      tx({ amount: 50, timestamp: new Date(2026, 0, 1, 12).toISOString() }),
+      tx({ amount: 50, timestamp: new Date(2026, 0, 3, 12).toISOString() }),
+    ];
+    const at = buildCumulativeDateMap(txs, "2026-01-01", "2026-01-05");
+    expect(at(50)).toBe("1 Oca");
+    expect(at(100)).toBe("3 Oca");
+  });
+
+  it("hafta bazında: bucket sonundaki tarihi döner", () => {
+    const txs = [
+      tx({ amount: 100, timestamp: new Date(2026, 0, 5, 12).toISOString() }), // 1. hafta
+      tx({ amount: 100, timestamp: new Date(2026, 0, 20, 12).toISOString() }), // 3. hafta
+    ];
+    const at = buildCumulativeDateMap(txs, "2026-01-01", "2026-02-15"); // 46 gün -> hafta
+    expect(periodGranularity("2026-01-01", "2026-02-15")).toBe("week");
+    expect(at(50)).toBe("7 Oca"); // 1. haftanın (gün 0-6) sonu
+    expect(at(100)).toBe("21 Oca"); // 3. haftanın (gün 14-20) sonu
+  });
+
+  it("ay bazında: sadece ay adını döner", () => {
+    const txs = [
+      tx({ amount: 100, timestamp: new Date(2026, 0, 15, 12).toISOString() }),
+      tx({ amount: 100, timestamp: new Date(2026, 2, 10, 12).toISOString() }),
+    ];
+    const at = buildCumulativeDateMap(txs, "2026-01-01", "2026-04-15");
+    expect(periodGranularity("2026-01-01", "2026-04-15")).toBe("month");
+    expect(at(50)).toBe("Oca");
+    expect(at(100)).toBe("Mar");
+  });
+
+  it("10 dilim bazında: her dilim toplam sürenin onda biri kadardır", () => {
+    const txs = [
+      tx({ amount: 100, timestamp: new Date(2026, 0, 1, 12).toISOString() }),
+      tx({ amount: 100, timestamp: new Date(2027, 0, 1, 12).toISOString() }),
+    ];
+    const at = buildCumulativeDateMap(txs, "2026-01-01", "2027-01-02");
+    expect(periodGranularity("2026-01-01", "2027-01-02")).toBe("decile");
+    expect(at(50)).not.toBe("");
+    expect(at(100)).not.toBe("");
+  });
+
+  it("dönemde harcama yoksa boş string döner", () => {
+    const at = buildCumulativeDateMap([], "2026-01-01", "2026-01-10");
+    expect(at(50)).toBe("");
   });
 });
