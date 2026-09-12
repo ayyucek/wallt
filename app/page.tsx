@@ -150,8 +150,6 @@ export default function Home() {
   const savingsAgg = useMemo(() => aggregate(savings, categories), [savings, categories]);
   const barData = useMemo(() => withSavingSegments(aggSorted, savingsAgg), [aggSorted, savingsAgg]);
   const pieData = useMemo(() => aggSorted.filter((c) => c.total > 0), [aggSorted]);
-  const radar = useMemo(() => radarData(agg), [agg]);
-  const radarAverage = radar[0]?.average ?? 0;
 
   const [grafiklerRangeStart, setGrafiklerRangeStart] = useState(thisMonthStartStr);
   const [grafiklerRangeEnd, setGrafiklerRangeEnd] = useState(todayStr);
@@ -284,12 +282,6 @@ export default function Home() {
                     En çok harcanandan en aza sıralı — bir bara dokunarak o kategoriye harcama ekleyebilirsin
                   </p>
                   <CategoryBarChart data={barData} onBarClick={openAddSheet} />
-                </section>
-
-                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Ağırlık Haritası</h3>
-                  <p className="mb-3 text-xs font-medium text-muted">Her kategorinin ortalamaya göre konumu</p>
-                  <CategoryRadarChart data={radar} average={radarAverage} />
                 </section>
               </div>
             )}
