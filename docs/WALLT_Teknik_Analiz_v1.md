@@ -322,7 +322,7 @@ Faz 0-4/7/8'de yazılan bileşenlerin Bölüm 4'teki breakpoint'ler geldiğinde 
 - **`app/page.tsx`:**
   - `TabKey` tipi `"genel" | "hareketler" | "istatistikler"` olur (bkz. `BottomTabBar.tsx`) — **12 Eylül 2026'da `"grafikler"` eklenerek 4 değerli oldu, bkz. 5.4**
   - Genel Bakış JSX bloğundan "Son Hareketler" `<section>`'ı kaldırılır
-  - Yeni bir `activeTab === "hareketler"` JSX bloğu eklenir: `HeroTotal`/`SavingsSummaryCard` olmadan, doğrudan `<TransactionList transactions={transactions} categories={categories} />` — zaman aralığı filtresi (`rangeStart`/`rangeEnd`, `filterByRange()`) Genel Bakış'la aynı state'i paylaştığı için ekstra bir filtre state'i gerekmez
+  - Yeni bir `activeTab === "hareketler"` JSX bloğu eklenir: `HeroTotal`/`SavingsSummaryCard` olmadan, doğrudan `<TransactionList transactions={transactions} categories={categories} />`. **12 Eylül 2026, 2. revizyon:** bu ilk halde başlıkta Genel Bakış'ın `rangeStart`/`rangeEnd` etiketi gösteriliyordu ama listeye hiç uygulanmıyordu (`transactions` filtresiz geçiliyordu) — bkz. 5.6, kendi bağımsız filtresiyle düzeltildi.
 - **`components/layout/BottomTabBar.tsx`:**
   - `TabKey` üç değerli olur; layout iki `wallt-tabbar-half` benzeri flex kapsayıcıya bölünür (sol: Genel Bakış + Son Hareketler, sağ: İstatistikler), FAB ortadaki mutlak konumlu slotunda değişmeden kalır (bkz. Bölüm 1 PWA/tab renkleri notundaki `tabC` tokeni, şimdiye kadar kullanılmamıştı — Son Hareketler'in aktif rengi olur). **12 Eylül 2026'da bu layout 2+2'ye ve ikon-only'e güncellendi, bkz. 5.4.**
 - **`components/layout/Sidebar.tsx`:** üçüncü bir `NavItem` eklenir (Genel Bakış / Son Hareketler / İstatistikler) — prototipte sidebar karşılığı olmadığından bu tamamen WALLT'a özgü, mevcut basit dikey liste deseninin doğal genişlemesi
@@ -362,6 +362,22 @@ Prototipteki `buildCumulativeDateMap(period, txs)` (bkz. `docs/WALLT_Prototype.j
 **Bağlantı (`page.tsx` → `CompareParetoChart.tsx`):** `page.tsx`'te zaten var olan `periodA`/`txA`'dan iki yeni `useMemo` türetilir: `periodADateAt = buildCumulativeDateMap(txA, periodA.start, periodA.end)` ve `periodAGranularityLabel = granularityLabel(periodGranularity(periodA.start, periodA.end))`. Bunlar `CompareParetoChart`'a iki yeni prop olarak geçirilir; bileşen granülerliği bilmez, yalnızca sağ `<YAxis>`'in `tickFormatter`'ında `periodADateAt` çağrısını yapar ve grafiğin altına `periodAGranularityLabel`'i kullanan küçük bir çözünürlük notu (`"Sağ eksen: {periodALabel} döneminde {granülerlik} çözünürlük"`) render eder.
 
 **Test:** `lib/calculations.test.ts`'e `periodGranularity`/`granularityLabel`/`buildCumulativeDateMap` için birim testleri eklendi — dört granülerlik seviyesinin sınır koşulları (`periodGranularity`) ve her granülerlikte bucket/format doğruluğu (`buildCumulativeDateMap`) ayrı ayrı kapsanıyor.
+
+### 5.6 Son Hareketler — Tarih ve Kategori Filtresi (12 Eylül 2026, 2. revizyon)
+
+Son Hareketler sekmesine, Genel Bakış/Grafikler'den tamamen bağımsız kendi filtresi eklendi (bkz. PRD 6.1.1). Bu, aynı zamanda mevcut bir tutarsızlığı da düzeltiyor: sekme başlığında Genel Bakış'ın `rangeStart`/`rangeEnd` etiketi gösteriliyordu ama `TransactionList`'e her zaman filtresiz `transactions` geçiliyordu — görüntülenen etiketin listeyle hiçbir ilişkisi yoktu.
+
+**Yeni bileşenler (dumb, `page.tsx`'teki state'i tüketir):**
+- **`components/hareketler/HareketlerRangePicker.tsx`:** `PeriodPicker.tsx` ile aynı desen (renkli başlık/swatch olmadan) — iki tarih input'u + `DateRangeSheet`'in `QUICK_OPTIONS`'ı (Bu Hafta/Geçen Hafta/Bu Ay/Geçen Ay) + bu sekmeye özel ekstra bir **"Tüm Zamanlar"** butonu (`onAllTime`). Sabit `QUICK_OPTIONS` listesi paylaşıldığı için diğer sekmelerin kısayolları etkilenmiyor; "Tüm Zamanlar" yalnızca bu bileşende var.
+- **`components/hareketler/CategoryFilterChips.tsx`:** `AddExpenseSheet`'teki kategori chip'leriyle aynı görsel dil (aktif chip kategori renginde dolu), ama **toggle mantığıyla** — `selectedIds: string[]` prop'u, birden fazla kategori aynı anda aktif olabilir. Boş dizi = "Tümü" (ayrı bir "Tümü" chip'i bu durumu gösterir/sıfırlar).
+- Her iki bileşen de "Tamam" butonu içermez — `PeriodPicker`'ın kullanıldığı Dönemleri Düzenle sheet'indeki gibi, tek bir paylaşılan "Tamam" butonu `page.tsx`'teki `BottomSheet` içinde, her iki bileşenin altında durur.
+
+**`app/page.tsx`:**
+- Yeni state: `hareketlerRangeStart`/`hareketlerRangeEnd` (varsayılan: Bu Ay — `thisMonthStartStr`/`todayStr`, diğer sekmelerle aynı varsayılan), `hareketlerCategoryIds: string[]` (varsayılan `[]`, yani tümü), `hareketlerFilterSheetOpen`.
+- `handleHareketlerAllTime()`: aralığı sabit bir epoch'tan (`2000-01-01`) bugüne ayarlar — gerçekçi bir kullanıcı verisinin bundan önce olması beklenmediği için minimum işlem tarihini hesaplamaya gerek yok.
+- `toggleHareketlerCategory(id)`: `hareketlerCategoryIds` dizisinde id varsa çıkarır, yoksa ekler.
+- `hareketlerFiltered = useMemo(...)`: önce `filterByRange(transactions, hareketlerRangeStart, hareketlerRangeEnd)`, sonra (dizi boş değilse) `categoryId` ile eşleşenlere daraltır. Tasarruf girişleri de `categoryId` taşıdığı için aynı filtreye tabidir.
+- Hareketler sekmesi başlığına, Grafikler'deki tek-ikon "Filtrele" deseni eklendi; `TransactionList`'e artık `transactions` yerine `hareketlerFiltered` geçiriliyor.
 
 ---
 

@@ -18,6 +18,8 @@ import CategoryBarChart from "@/components/genel/CategoryBarChart";
 import CategoryPieChart from "@/components/genel/CategoryPieChart";
 import CategoryRadarChart from "@/components/genel/CategoryRadarChart";
 import TransactionList from "@/components/hareketler/TransactionList";
+import HareketlerRangePicker from "@/components/hareketler/HareketlerRangePicker";
+import CategoryFilterChips from "@/components/hareketler/CategoryFilterChips";
 import PeriodPicker from "@/components/istatistikler/PeriodPicker";
 import PeriodStats from "@/components/istatistikler/PeriodStats";
 import CompareBarChart from "@/components/istatistikler/CompareBarChart";
@@ -193,6 +195,40 @@ export default function Home() {
   const grafiklerRadar = useMemo(() => radarData(grafiklerAgg), [grafiklerAgg]);
   const grafiklerRadarAverage = grafiklerRadar[0]?.average ?? 0;
 
+  // Son Hareketler'in kendi tarih + kategori filtresi (12 Eylül 2026 eklentisi)
+  // — Genel Bakış/Grafikler'in aralıklarından tamamen bağımsız. "Tüm
+  // Zamanlar" sabit bir epoch'a (2000-01-01) döner; gerçekçi bir kullanıcı
+  // verisinin bundan önce olması beklenmez, bu yüzden min tarihi hesaplamaya
+  // gerek yok.
+  const [hareketlerRangeStart, setHareketlerRangeStart] = useState(thisMonthStartStr);
+  const [hareketlerRangeEnd, setHareketlerRangeEnd] = useState(todayStr);
+  const [hareketlerCategoryIds, setHareketlerCategoryIds] = useState<string[]>([]);
+  const [hareketlerFilterSheetOpen, setHareketlerFilterSheetOpen] = useState(false);
+
+  function handleHareketlerQuickRange(preset: QuickRangeKey) {
+    const range = quickRange(preset);
+    setHareketlerRangeStart(range.start);
+    setHareketlerRangeEnd(range.end);
+  }
+
+  function handleHareketlerAllTime() {
+    setHareketlerRangeStart("2000-01-01");
+    setHareketlerRangeEnd(todayStr());
+  }
+
+  function toggleHareketlerCategory(id: string) {
+    setHareketlerCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
+  const hareketlerFiltered = useMemo(() => {
+    const byRange = filterByRange(transactions, hareketlerRangeStart, hareketlerRangeEnd);
+    return hareketlerCategoryIds.length === 0
+      ? byRange
+      : byRange.filter((t) => hareketlerCategoryIds.includes(t.categoryId));
+  }, [transactions, hareketlerRangeStart, hareketlerRangeEnd, hareketlerCategoryIds]);
+
   const txA = useMemo(
     () => filterByRange(transactions, periodA.start, periodA.end).filter(isExpense),
     [transactions, periodA]
@@ -299,10 +335,30 @@ export default function Home() {
 
             {!loadError && !loading && activeTab === "hareketler" && (
               <div>
+                <div className="mb-4 flex items-stretch gap-3">
+                  <div className="flex flex-1 flex-col justify-center gap-1 rounded-card bg-card p-4 shadow-card">
+                    <span className="text-xs font-semibold text-muted">
+                      {formatRangeLabel(hareketlerRangeStart, hareketlerRangeEnd)}
+                    </span>
+                    {hareketlerCategoryIds.length > 0 && (
+                      <span className="text-[11px] font-semibold text-muted">
+                        {hareketlerCategoryIds.length} kategori seçili
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHareketlerFilterSheetOpen(true)}
+                    aria-label="Filtrele"
+                    className="flex w-12 flex-shrink-0 items-center justify-center rounded-card bg-card text-ink shadow-card active:scale-95"
+                  >
+                    <Filter size={18} />
+                  </button>
+                </div>
+
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
                   <h3 className="mb-1 text-sm font-bold text-ink">Son Hareketler</h3>
-                  <p className="mb-3 text-xs font-medium text-muted">{formatRangeLabel(rangeStart, rangeEnd)}</p>
-                  <TransactionList transactions={transactions} categories={categories} />
+                  <TransactionList transactions={hareketlerFiltered} categories={categories} />
                 </section>
               </div>
             )}
@@ -440,6 +496,36 @@ export default function Home() {
           onQuickSelect={handleQuickRange}
           onClose={() => setRangeSheetOpen(false)}
         />
+      </BottomSheet>
+
+      <BottomSheet
+        open={hareketlerFilterSheetOpen}
+        onClose={() => setHareketlerFilterSheetOpen(false)}
+        title="Filtrele"
+      >
+        <div className="flex flex-col gap-4">
+          <HareketlerRangePicker
+            start={hareketlerRangeStart}
+            end={hareketlerRangeEnd}
+            onStartChange={setHareketlerRangeStart}
+            onEndChange={setHareketlerRangeEnd}
+            onQuickSelect={handleHareketlerQuickRange}
+            onAllTime={handleHareketlerAllTime}
+          />
+          <CategoryFilterChips
+            categories={categories}
+            selectedIds={hareketlerCategoryIds}
+            onToggle={toggleHareketlerCategory}
+            onClearAll={() => setHareketlerCategoryIds([])}
+          />
+          <button
+            type="button"
+            onClick={() => setHareketlerFilterSheetOpen(false)}
+            className="mt-1 rounded-pill bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] py-3 text-sm font-bold text-white shadow-btn-primary"
+          >
+            Tamam
+          </button>
+        </div>
       </BottomSheet>
 
       <BottomSheet

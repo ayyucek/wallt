@@ -108,9 +108,12 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 
 ### 6.1.1 Son Hareketler Sekmesi
 
-- İçerik, Genel Bakış'taki (artık kaldırılan) özet bölümünün yerini alır ve genişletilir: kısıtlı bir sayıya (önceki "ilk 40 kayıt") kesilmeden, **seçili zaman aralığındaki tüm işlemler** listelenir
-- Zaman Aralığı filtresi (Genel Bakış'la paylaşılan aynı `rangeStart`/`rangeEnd` state'i) bu sekmeyi de kapsar — kullanıcı "Bu Ay"/"Geçen Ay" gibi bir aralık seçtiğinde her iki sekme de aynı veriyi gösterir, tutarlılık korunur
+- İçerik, Genel Bakış'taki (artık kaldırılan) özet bölümünün yerini alır ve genişletilir: kısıtlı bir sayıya (önceki "ilk 40 kayıt") kesilmeden, **seçili filtreye uyan tüm işlemler** listelenir
 - **Sayfalama/sonsuz kaydırma v1 kapsamında değildir** — Supabase sorgusu zaten kullanıcının tüm verisini tek seferde çekiyor (bkz. Teknik Analiz Bölüm 10); çok uzun bir tarih aralığında binlerce kayıt performans sorunu yaratırsa bu v1.1'de ele alınacak bilinen bir risktir, şimdilik kabul edilebilir bir basitleştirme
+- **12 Eylül 2026 eklentisi — Tarih ve kategori filtresi:** Sekme, Genel Bakış/Grafikler'den tamamen **bağımsız kendi filtresine** sahip (tek "Filtrele" ikonu, Grafikler'deki tek-ikon deseniyle tutarlı). Önceki halinde başlıkta Genel Bakış'ın tarih etiketi gösteriliyordu ama listeye uygulanmıyordu (tutarsızlık); bu revizyonla düzeltildi:
+  - **Tarih aralığı:** standart hızlı seçim kısayolları (Bu Hafta/Geçen Hafta/Bu Ay/Geçen Ay) + bu sekmeye özel bir **"Tüm Zamanlar"** kısayolu (sabit bir epoch'tan bugüne) — sekmenin özgün "tam geçmiş" tasarım kararına tek dokunuşla dönebilmek için
+  - **Kategori filtresi:** **çoklu seçim** — birden fazla kategori aynı anda aktif olabilir; hiçbiri seçili değilse "tümü" anlamına gelir. Tasarruf girişleri de (kategoriId üzerinden) aynı filtreye tabidir
+  - **Varsayılan (ilk açılış):** Bu Ay, tüm kategoriler — diğer sekmelerle tutarlı bir başlangıç noktası
 
 ### 6.1.2 Grafikler Sekmesi (12 Eylül 2026)
 
