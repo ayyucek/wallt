@@ -1,4 +1,3 @@
-import { SAVING_COLOR } from "./categories";
 import type {
   Category,
   CategoryTotal,
@@ -86,23 +85,20 @@ export function radarData(agg: CategoryTotal[]): RadarEntry[] {
   return withSpend.map((c) => ({ category: c.name, value: c.total, average }));
 }
 
-// Genel Bakış bar chart'ına, toplam tasarruf > 0 ise sona eklenen sentetik
-// "Tasarruf" barını üretir. sortedAgg zaten büyükten küçüğe sıralı olmalı.
-export function withSavingsBar(
+// Genel Bakış bar chart'ına her kategorinin tasarruf tutarını ekler
+// (bkz. CategoryBarChart.tsx). Ayrı bir satır ÜRETMEZ — sortedAgg'daki
+// ilgili satıra `savingSegment` alanını iliştirir, böylece o kategorinin
+// barının ucuna stacked bir segment olarak render edilebilir. savingsAgg,
+// aggregate(savings, categories) çıktısıdır (savings = type "saving" olan
+// işlemler). sortedAgg'ın harcama `total`'ları hiç değişmez.
+export function withSavingSegments(
   sortedAgg: CategoryTotal[],
-  totalSavings: number
+  savingsAgg: CategoryTotal[]
 ): CategoryTotal[] {
-  if (totalSavings <= 0) return sortedAgg;
-  return [
-    ...sortedAgg,
-    {
-      id: "__savings__",
-      name: "Tasarruf",
-      color: SAVING_COLOR,
-      total: totalSavings,
-      isSaving: true,
-    },
-  ];
+  return sortedAgg.map((c) => {
+    const saving = savingsAgg.find((s) => s.id === c.id)?.total ?? 0;
+    return saving > 0 ? { ...c, savingSegment: saving } : c;
+  });
 }
 
 export type QuickRangeKey = "week" | "lastweek" | "month" | "lastmonth";

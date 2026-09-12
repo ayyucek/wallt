@@ -25,9 +25,11 @@ export interface DateRange {
 
 export interface CategoryTotal extends Category {
   total: number;
-  // Bar chart'ta harcama kategorilerine eklenen sentetik "Tasarruf" barını
-  // ayırt etmek için (bkz. withSavingsBar). Gerçek kategorilerde yer almaz.
-  isSaving?: boolean;
+  // Bu kategoriden yapılan tasarrufun tutarı — bar chart'ta `total`
+  // segmentinin ucuna eklenen ayrı bir stacked segment olarak gösterilir
+  // (bkz. withSavingSegments). `total`'a dahil değildir, hero tutarını/
+  // pareto/radar hesaplamalarını etkilemez.
+  savingSegment?: number;
 }
 
 export interface ParetoEntry extends CategoryTotal {

@@ -133,7 +133,7 @@ export interface DateRange {
 
 export interface CategoryTotal extends Category {
   total: number;
-  isSaving?: boolean; // sadece withSavingsBar()'ın ürettiği sentetik "Tasarruf" barında true
+  savingSegment?: number; // bkz. withSavingSegments() — 12 Eylül 2026 revizyonu
 }
 
 export interface ParetoEntry extends CategoryTotal {
@@ -152,8 +152,18 @@ export interface RadarEntry {
 **Tasarruf (`type: "saving"`) ve radar chart — v1 kapsamına eklendi:** Prototipte var olan bu iki özellik, ilk PRD/Teknik Analiz taslağında v1 kapsamı dışında bırakılmıştı; PM onayıyla v1'e geri alındı (bkz. PRD Bölüm 5.1, 7 ve 7.2). Buna bağlı fonksiyonlar `lib/calculations.ts` içinde:
 - `isExpense(t)` / `isSaving(t)` — bir işlemin türüne göre ayrıştırılması. `aggregate()`, `paretoData()` ve `radarData()`'ya verilecek dizi, çağıran taraf tarafından **önceden `isExpense` ile filtrelenmelidir** — bu fonksiyonların kendisi tür ayrımı yapmaz (prototipteki desenle birebir aynı).
 - `radarData(agg: CategoryTotal[]): RadarEntry[]` — harcaması olan kategorilerin listesini, bu kategorilerin ortalama harcamasıyla birlikte döner. UI katmanı, dönen dizi 3'ten kısaysa (PRD 7 tablosundaki kural) radar grafiğini göstermemelidir.
-- `withSavingsBar(sortedAgg: CategoryTotal[], totalSavings: number): CategoryTotal[]` — `totalSavings > 0` ise büyükten küçüğe sıralı kategori dizisinin sonuna, `id: "__savings__"` ve `isSaving: true` ile işaretli sentetik bir "Tasarruf" barı ekler.
-- Tasarruf rengi (`SAVING_COLOR = "#34D399"`), kategori renklerinden bağımsız sabit bir renktir ve `lib/categories.ts` içinde tanımlanır (periodA/periodB renklerine benzer şekilde).
+- `withSavingSegments(sortedAgg: CategoryTotal[], savingsAgg: CategoryTotal[]): CategoryTotal[]` — **12 Eylül 2026 revizyonu:** artık sentetik bir "Tasarruf" satırı üretmez; `savingsAgg` (yani `aggregate(savings, categories)` — tasarruf işlemlerinin kategori bazında toplamı) içinde eşleşen bir kategori varsa, o kategorinin `sortedAgg` satırına `savingSegment` alanını iliştirir. `total` alanı hiç değişmez.
+- Tasarruf rengi (`SAVING_COLOR = "#34D399"`), `lib/categories.ts` içinde tanımlanır ve `SavingsSummaryCard.tsx`/`TransactionList.tsx`'teki "Tasarruf" kimliğini (yeşil nokta/etiket) temsil eder. **12 Eylül 2026, 2. revizyon:** bar chart'taki tasarruf segmenti bu sabit rengi KULLANMIYOR — ilgili kategorinin kendi rengini kullanıyor (bkz. 5.3), böylece aynı barda hangi kategorinin tasarrufu olduğu renkle de görünür.
+
+### 5.3 Tasarruf Segmenti — Stacked Bar + Shimmer (12 Eylül 2026 revizyonu)
+
+Tasarruf artık ayrı bir bar değil, ilgili kategorinin barının ucuna eklenen bir stacked segment (bkz. PRD 7.2). `CategoryBarChart.tsx`'teki uygulama:
+
+- İki `<Bar>`, aynı `stackId` ile: `dataKey="total"` (harcama, kategori rengiyle) ve `dataKey="savingSegment"` (tasarruf, özel stil). `layout="vertical"` olduğundan stack yatayda birikir — tasarruf segmenti otomatik olarak harcama barının sağ ucuna eklenir.
+- Shimmer efekti: **12 Eylül 2026, 2. revizyon — tasarruf segmenti ilgili kategorinin kendi rengini kullanır** (sabit `SAVING_COLOR` değil), bu yüzden `<BarChart>` içine `data`'daki her kategori için ayrı bir `<linearGradient id="savingShimmer-{categoryId}">` render edilir (Recharts'ta gradient-fill grafiklerde standart bir teknik); üç `<stop>` (soluk → parlak → soluk, hepsi `entry.color`) ve gradient'in `x1`/`x2` özelliklerine uygulanan `<animate>` ile soldan sağa sürekli kayan bir "skeleton shimmer" hareketi elde edilir. SMIL tabanlı bu animasyon tarayıcı tarafından native/compositor seviyesinde çalıştığı için birden fazla kategori aynı anda shimmer gösterse bile performans etkisi ölçülemeyecek kadar düşüktür (test: 2-3 eşzamanlı segment, ~58 FPS).
+- Tasarruf segmentinin `<Cell>`'i: `fill="url(#savingShimmer-{categoryId})"`, `stroke={entry.color}`, `strokeDasharray="5 4"` — harcama segmentinden (aynı kategori rengi, ama düz/opak dolgu) net ayrışır.
+- Köşe yuvarlama (`radius`): harcama segmentinin sağ kenarı, ancak o kategoride tasarruf segmenti YOKSA yuvarlanır (`[0,8,8,0]`); varsa köşeli kalır (`[0,0,0,0]`) ve dış uç yuvarlaması tasarruf segmentine geçer. Recharts'ın `Cell` tipi `radius` için diziyi kabul etmiyor (yalnızca `string|number`) ama alttaki `Rectangle` shape'i (Bar'ın kendisinin kullandığı) diziyi kabul ediyor — bu yüzden `@ts-expect-error` ile işaretlenmiş bilinçli bir tip uyuşmazlığı var.
+- Tasarruf segmentinin `<Bar>`'ına `onClick` **atanmaz** — sadece harcama segmentinin `<Bar>`'ı tıklanabilir (bkz. Faz sonrası "bara dokununca AddExpenseSheet aç" özelliği). Bir kategoride hiç harcama olmasa bile (`total: 0`) `aggregate()` o kategoriyi haritada tuttuğu için segment yine doğru barın üzerinde render olur.
 
 ---
 
@@ -267,7 +277,7 @@ Ek tek-kullanımlık gölgeler (bileşen bazında, ayrı token gerekmez): stat k
 | Prototip Bölümü | Gerçek Bileşen | Not |
 |---|---|---|
 | Hero tutar + filtre ikonu | `HeroTotal.tsx` | `onFilterClick` prop'u ile `DateRangeSheet`'i açar |
-| Bar chart (kategori bazlı) | `CategoryBarChart.tsx` | `aggregate()` çıktısını alır (yalnızca `isExpense` işlemlerden), Recharts `BarChart` sarmalar; toplam tasarruf > 0 ise veri `withSavingsBar()`'dan geçirilerek sona "Tasarruf" barı eklenir (bkz. PRD 7.2) |
+| Bar chart (kategori bazlı) | `CategoryBarChart.tsx` | `aggregate()` çıktısını alır (yalnızca `isExpense` işlemlerden), Recharts `BarChart` sarmalar; `withSavingSegments()` ile her kategorinin tasarruf tutarı, o kategorinin barına stacked bir `savingSegment` olarak eklenir (12 Eylül 2026 revizyonu — artık ayrı bir bar değil, bkz. PRD 7.2 ve Bölüm 5.3) |
 | Kategori Ağırlık Haritası (radar) | `CategoryRadarChart.tsx` | `radarData()` çıktısını alır; dizi 3'ten kısaysa grafik yerine bir bilgi metni gösterir (PRD 7 tablosundaki kural) |
 | Tasarruf özet kartı | `SavingsSummaryCard.tsx` | Seçili dönemde toplam tasarruf > 0 ise gösterilir; `isSaving` ile filtrelenen işlemlerin toplamını alır |
 | Son Hareketler listesi | `components/hareketler/TransactionList.tsx` (öneri — bkz. 5.2) | **11 Eylül 2026 revizyonu:** eskiden Genel Bakış içinde `RecentTransactions.tsx` olarak gömülüydü (`slice(0,40)`, `max-h-80 overflow-y-auto`); artık ayrı "Son Hareketler" sekmesinin tek içeriği — `slice`/`max-h` kaldırılır, seçili zaman aralığındaki tüm işlemler gösterilir. Satır render mantığı (nokta, başlık, tutar, "Tasarruf" etiketi/"+" işareti) değişmez |

@@ -11,7 +11,7 @@ import {
   quickRange,
   radarData,
   txDateStr,
-  withSavingsBar,
+  withSavingSegments,
 } from "./calculations";
 import type { Category, Transaction } from "./types";
 
@@ -141,22 +141,38 @@ describe("radarData", () => {
   });
 });
 
-describe("withSavingsBar", () => {
-  it("toplam tasarruf 0 veya negatifse diziyi değiştirmeden döner", () => {
+describe("withSavingSegments", () => {
+  it("hiçbir kategoride tasarruf yoksa diziyi değiştirmeden döner", () => {
     const agg = aggregate([tx({ categoryId: "yemek", amount: 100 })], categories);
-    expect(withSavingsBar(agg, 0)).toEqual(agg);
+    const savingsAgg = aggregate([], categories);
+    expect(withSavingSegments(agg, savingsAgg)).toEqual(agg);
   });
 
-  it("toplam tasarruf > 0 ise sona sentetik bir 'Tasarruf' barı ekler", () => {
+  it("ilgili kategorinin satırına savingSegment ekler, total'ı değiştirmez", () => {
     const agg = aggregate([tx({ categoryId: "yemek", amount: 100 })], categories);
-    const result = withSavingsBar(agg, 250);
-    const savingsEntry = result[result.length - 1];
-    expect(savingsEntry).toMatchObject({
-      id: "__savings__",
-      name: "Tasarruf",
-      total: 250,
-      isSaving: true,
-    });
+    const savingsAgg = aggregate(
+      [tx({ type: "saving", categoryId: "yemek", amount: 40 })],
+      categories
+    );
+    const result = withSavingSegments(agg, savingsAgg);
+    const yemek = result.find((c) => c.id === "yemek")!;
+    expect(yemek.total).toBe(100);
+    expect(yemek.savingSegment).toBe(40);
+    // Tasarrufu olmayan kategoriler etkilenmez.
+    const ulasim = result.find((c) => c.id === "ulasim")!;
+    expect(ulasim.savingSegment).toBeUndefined();
+  });
+
+  it("harcaması olmayan ama tasarrufu olan bir kategoriye de segment ekler", () => {
+    const agg = aggregate([], categories);
+    const savingsAgg = aggregate(
+      [tx({ type: "saving", categoryId: "ulasim", amount: 25 })],
+      categories
+    );
+    const result = withSavingSegments(agg, savingsAgg);
+    const ulasim = result.find((c) => c.id === "ulasim")!;
+    expect(ulasim.total).toBe(0);
+    expect(ulasim.savingSegment).toBe(25);
   });
 });
 

@@ -149,9 +149,9 @@ Dönem A ve Dönem B, ayrı renk kodları taşır (Dönem A = sıcak turuncu, D�
 ### 7.2 Tasarruf Görselleştirmesi
 
 - Seçili dönemde toplam tasarruf > 0 ise, Genel Bakış'ta hero tutarın altında ayrı bir **tasarruf özet kartı** gösterilir (yeşil vurgu, toplam tasarruf tutarı)
-- Aynı koşulda, kategori bar chart'ının sonuna sabit bir **"Tasarruf" barı** eklenir; bu bar diğer kategori barlarından farklı bir dolgu/kenarlıkla ayrıştırılır ve tıklanamaz (diğer barların aksine harcama ekleme akışını tetiklemez)
+- **12 Eylül 2026 revizyonu:** Tasarruf, kategori bar chart'ının **sonuna ayrı bir bar olarak eklenmez** — her kategorinin kendi tasarruf tutarı, o kategorinin harcama barının **ucuna eklenen stacked bir segment** olarak gösterilir (hangi kategoriden tasarruf edildiği `AddExpenseSheet`'te zaten seçiliyor, bkz. Bölüm 5.4). Bu segment **ilgili kategorinin kendi rengini** kullanır (sabit bir "tasarruf yeşili" değil — hangi kategoriden tasarruf edildiği renkten de anlaşılır), ama yarı transparan dolgu, hafif bir shimmer/parlama animasyonu ve kesikli (dashed) kenarlıkla normal harcama segmentinden görsel olarak net ayrışır ve **tıklanamaz** (harcama segmentinin aksine harcama ekleme akışını tetiklemez). Bir kategoride hiç harcama yoksa ama tasarruf varsa (örn. o dönem hiç Ulaşım harcaması yapılmadı ama Ulaşım'dan tasarruf edildi), segment yine de o kategorinin (sıfır genişlikteki) barına eklenir.
 - Son Hareketler listesinde tasarruf girişleri "Tasarruf" etiketiyle ve tutarın başında "+" işaretiyle ayrıştırılır
-- Tasarruf, hiçbir grafikte (bar, pie, pareto, radar) kategori toplamlarına dahil edilmez — yalnızca kendi özet kartında ve bar chart'taki ayrı barında görünür
+- Tasarruf, hiçbir grafikte (bar, pie, pareto, radar) kategori **toplamlarına** dahil edilmez — hero tutarı, bar'ın "harcama" kısmının uzunluğu, pareto/radar hesaplamaları yalnızca harcamalardan hesaplanır; tasarruf yalnızca kendi özet kartında ve bar chart'taki segmentinde görünür
 
 ## 8. Tasarım Sistemi
 

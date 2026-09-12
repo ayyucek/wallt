@@ -33,7 +33,7 @@ import {
   isSaving,
   quickRange,
   radarData,
-  withSavingsBar,
+  withSavingSegments,
   type QuickRangeKey,
 } from "@/lib/calculations";
 import { formatCurrency, formatRangeLabel } from "@/lib/format";
@@ -147,7 +147,8 @@ export default function Home() {
   const aggSorted = useMemo(() => [...agg].sort((a, b) => b.total - a.total), [agg]);
   const totalExpenses = useMemo(() => expenses.reduce((s, t) => s + t.amount, 0), [expenses]);
   const totalSavings = useMemo(() => savings.reduce((s, t) => s + t.amount, 0), [savings]);
-  const barData = useMemo(() => withSavingsBar(aggSorted, totalSavings), [aggSorted, totalSavings]);
+  const savingsAgg = useMemo(() => aggregate(savings, categories), [savings, categories]);
+  const barData = useMemo(() => withSavingSegments(aggSorted, savingsAgg), [aggSorted, savingsAgg]);
   const pieData = useMemo(() => aggSorted.filter((c) => c.total > 0), [aggSorted]);
   const radar = useMemo(() => radarData(agg), [agg]);
   const radarAverage = radar[0]?.average ?? 0;
