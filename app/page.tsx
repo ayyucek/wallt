@@ -15,12 +15,12 @@ import Toast from "@/components/ui/Toast";
 import HeroTotal from "@/components/genel/HeroTotal";
 import SavingsSummaryCard from "@/components/genel/SavingsSummaryCard";
 import CategoryBarChart from "@/components/genel/CategoryBarChart";
+import CategoryPieChart from "@/components/genel/CategoryPieChart";
 import CategoryRadarChart from "@/components/genel/CategoryRadarChart";
 import TransactionList from "@/components/hareketler/TransactionList";
 import PeriodPicker from "@/components/istatistikler/PeriodPicker";
 import PeriodStats from "@/components/istatistikler/PeriodStats";
 import CompareBarChart from "@/components/istatistikler/CompareBarChart";
-import ComparePieChart from "@/components/istatistikler/ComparePieChart";
 import CompareParetoChart from "@/components/istatistikler/CompareParetoChart";
 import { CUSTOM_PALETTE, DEFAULT_CATEGORIES } from "@/lib/categories";
 import {
@@ -153,6 +153,45 @@ export default function Home() {
   const radar = useMemo(() => radarData(agg), [agg]);
   const radarAverage = radar[0]?.average ?? 0;
 
+  const [grafiklerRangeStart, setGrafiklerRangeStart] = useState(thisMonthStartStr);
+  const [grafiklerRangeEnd, setGrafiklerRangeEnd] = useState(todayStr);
+  const [grafiklerRangeSheetOpen, setGrafiklerRangeSheetOpen] = useState(false);
+
+  function handleGrafiklerQuickRange(preset: QuickRangeKey) {
+    const range = quickRange(preset);
+    setGrafiklerRangeStart(range.start);
+    setGrafiklerRangeEnd(range.end);
+  }
+
+  const grafiklerFiltered = useMemo(
+    () => filterByRange(transactions, grafiklerRangeStart, grafiklerRangeEnd),
+    [transactions, grafiklerRangeStart, grafiklerRangeEnd]
+  );
+  const grafiklerExpenses = useMemo(() => grafiklerFiltered.filter(isExpense), [grafiklerFiltered]);
+  const grafiklerSavings = useMemo(() => grafiklerFiltered.filter(isSaving), [grafiklerFiltered]);
+  const grafiklerAgg = useMemo(
+    () => aggregate(grafiklerExpenses, categories),
+    [grafiklerExpenses, categories]
+  );
+  const grafiklerAggSorted = useMemo(
+    () => [...grafiklerAgg].sort((a, b) => b.total - a.total),
+    [grafiklerAgg]
+  );
+  const grafiklerSavingsAgg = useMemo(
+    () => aggregate(grafiklerSavings, categories),
+    [grafiklerSavings, categories]
+  );
+  const grafiklerBarData = useMemo(
+    () => withSavingSegments(grafiklerAggSorted, grafiklerSavingsAgg),
+    [grafiklerAggSorted, grafiklerSavingsAgg]
+  );
+  const grafiklerPieData = useMemo(
+    () => grafiklerAggSorted.filter((c) => c.total > 0),
+    [grafiklerAggSorted]
+  );
+  const grafiklerRadar = useMemo(() => radarData(grafiklerAgg), [grafiklerAgg]);
+  const grafiklerRadarAverage = grafiklerRadar[0]?.average ?? 0;
+
   const txA = useMemo(
     () => filterByRange(transactions, periodA.start, periodA.end).filter(isExpense),
     [transactions, periodA]
@@ -171,8 +210,6 @@ export default function Home() {
     () => compareParetoData(aggA, aggB, categories, totalA, totalB),
     [aggA, aggB, categories, totalA, totalB]
   );
-  const comparePieA = useMemo(() => aggA.filter((c) => c.total > 0), [aggA]);
-  const comparePieB = useMemo(() => aggB.filter((c) => c.total > 0), [aggB]);
 
   async function handleLogout() {
     const supabase = createClient();
@@ -267,6 +304,45 @@ export default function Home() {
               </div>
             )}
 
+            {!loadError && !loading && activeTab === "grafikler" && (
+              <div>
+                <div className="mb-4 flex items-stretch gap-3">
+                  <div className="flex flex-1 flex-col justify-center gap-1 rounded-card bg-card p-4 shadow-card">
+                    <span className="text-xs font-semibold text-muted">Seçili dönem</span>
+                    <span className="text-sm font-bold text-ink">
+                      {formatRangeLabel(grafiklerRangeStart, grafiklerRangeEnd)}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setGrafiklerRangeSheetOpen(true)}
+                    aria-label="Zaman aralığını filtrele"
+                    className="flex w-12 flex-shrink-0 items-center justify-center rounded-card bg-card text-ink shadow-card active:scale-95"
+                  >
+                    <Filter size={18} />
+                  </button>
+                </div>
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Kategoriye Göre Harcama</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">En çok harcanandan en aza sıralı</p>
+                  <CategoryBarChart data={grafiklerBarData} onBarClick={openAddSheet} />
+                </section>
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Dağılımı</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">Oransal dağılım</p>
+                  <CategoryPieChart data={grafiklerPieData} />
+                </section>
+
+                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
+                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Ağırlık Haritası</h3>
+                  <p className="mb-3 text-xs font-medium text-muted">Her kategorinin ortalamaya göre konumu</p>
+                  <CategoryRadarChart data={grafiklerRadar} average={grafiklerRadarAverage} />
+                </section>
+              </div>
+            )}
+
             {!loadError && !loading && activeTab === "istatistikler" && (
               <div>
                 <div className="mb-4 flex items-stretch gap-3">
@@ -302,17 +378,6 @@ export default function Home() {
                   <h3 className="mb-1 text-sm font-bold text-ink">Kategori Bazlı Karşılaştırma</h3>
                   <p className="mb-3 text-xs font-medium text-muted">Her kategori için iki dönem yan yana</p>
                   <CompareBarChart data={compareBar} periodALabel={periodA.label} periodBLabel={periodB.label} />
-                </section>
-
-                <section className="mb-4 rounded-card bg-card p-4 shadow-card">
-                  <h3 className="mb-1 text-sm font-bold text-ink">Kategori Dağılımı Karşılaştırma</h3>
-                  <p className="mb-3 text-xs font-medium text-muted">İç içe halkalar — iç: Dönem A, dış: Dönem B</p>
-                  <ComparePieChart
-                    dataA={comparePieA}
-                    dataB={comparePieB}
-                    periodALabel={periodA.label}
-                    periodBLabel={periodB.label}
-                  />
                 </section>
 
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
@@ -369,6 +434,21 @@ export default function Home() {
           onEndChange={setRangeEnd}
           onQuickSelect={handleQuickRange}
           onClose={() => setRangeSheetOpen(false)}
+        />
+      </BottomSheet>
+
+      <BottomSheet
+        open={grafiklerRangeSheetOpen}
+        onClose={() => setGrafiklerRangeSheetOpen(false)}
+        title="Zaman Aralığı"
+      >
+        <DateRangeSheet
+          start={grafiklerRangeStart}
+          end={grafiklerRangeEnd}
+          onStartChange={setGrafiklerRangeStart}
+          onEndChange={setGrafiklerRangeEnd}
+          onQuickSelect={handleGrafiklerQuickRange}
+          onClose={() => setGrafiklerRangeSheetOpen(false)}
         />
       </BottomSheet>
 

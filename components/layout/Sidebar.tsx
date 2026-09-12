@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { BarChart3, Home, Plus, Receipt } from "lucide-react";
+import { BarChart3, Home, PieChart, Plus, Receipt } from "lucide-react";
 import type { TabKey } from "./BottomTabBar";
 
 interface SidebarProps {
@@ -25,6 +25,12 @@ export default function Sidebar({ active, onTabChange, onAddClick }: SidebarProp
           icon={<Receipt size={18} />}
           active={active === "hareketler"}
           onClick={() => onTabChange("hareketler")}
+        />
+        <NavItem
+          label="Grafikler"
+          icon={<PieChart size={18} />}
+          active={active === "grafikler"}
+          onClick={() => onTabChange("grafikler")}
         />
         <NavItem
           label="İstatistikler"

@@ -94,11 +94,14 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 
 **Navigasyon revizyonu (11 Eylül 2026):** "Son Hareketler" artık Genel Bakış içinde bir bölüm değil, ayrı ve sabit bir **üçüncü sekme**. Üç sekme düzeni ve FAB'ın konumu için `docs/WALLT_Prototype.jsx`'e bakıldı: prototipte zaten (v1'in kapsam dışı bıraktığı) üçüncü bir "Grafikler" sekmesiyle bu tam senaryo çözülmüş durumda — kendi çözümümüzü icat etmek yerine onu birebir yeniden kullanıyoruz (bkz. 6.1).
 
+**Navigasyon revizyonu (12 Eylül 2026):** Prototipin kendi "Grafikler" sekmesi (bar/pie/radar üçlüsü, kendi bağımsız tarih aralığı filtresiyle) de v1'e eklendi — dördüncü sekme. Sekme sırası: **Genel Bakış, Son Hareketler, Grafikler, İstatistikler**. Dar mobil genişlikte 4 etiketli sekme + FAB sığmadığından, alt tab bar **ikon-only** oldu (etiketler yalnızca masaüstü Sidebar'da kalıyor, bkz. 6.1).
+
 ### 6.1 Mobil Düzen (varsayılan, <768px)
 
-- **Alt tab bar**, üç ana ekran arasında geçiş sağlar: **Genel Bakış**, **Son Hareketler**, **İstatistikler**
-- Tab bar iki eşit olmayan "yarıma" bölünür ve FAB, bu iki yarım arasındaki sabit bir çentikte durur — prototipteki `wallt-tabbar-half` deseninin birebir aynısı: sol yarımda **Genel Bakış** ve **Son Hareketler** (ikisi de o yarımı paylaşır), sağ yarımda tek başına **İstatistikler**. FAB'ın konumu, boyutu ve yükseltilmiş görünümü hiç değişmez — sadece sol yarımdaki öğe sayısı 1'den 2'ye çıkar
-- Aktif sekme rengi kategoriye göre ayrışır (prototipteki `tab-b`/`tab-c` renk sınıflarıyla birebir): Genel Bakış mor (`tabA`), Son Hareketler yeşil (`tabC` — Teknik Analiz Bölüm 4'te tanımlı ama şimdiye kadar kullanılmamış tokendi, tam bunun için ayrılmış görünüyor), İstatistikler mavi (`tabB`)
+- **Alt tab bar**, dört ana ekran arasında geçiş sağlar: **Genel Bakış**, **Son Hareketler**, **Grafikler**, **İstatistikler**
+- Tab bar iki yarıma bölünür ve FAB, bu iki yarım arasındaki sabit bir çentikte durur — prototipteki `wallt-tabbar-half` deseninin genişletilmiş hali: sol yarımda **Genel Bakış** ve **Son Hareketler**, sağ yarımda **Grafikler** ve **İstatistikler** (her yarım artık 2'şer sekme paylaşıyor). FAB'ın konumu, boyutu ve yükseltilmiş görünümü hiç değişmez
+- **12 Eylül 2026 revizyonu:** 4 sekme + FAB, etiketli haliyle dar mobil genişlikte sığmadığından alt tab bar **ikon-only** oldu (metin etiketi yok, yalnızca `aria-label` ile erişilebilirlik korunuyor) — masaüstü Sidebar'da etiketler aynen kalıyor, çünkü orada yeterli yatay alan var. Değerlendirilip elenen alternatifler: kaydırılabilir tab bar (bottom nav'da scroll, kullanıcı beklentisini kırar, yaygın değil) ve FAB'ı farklı bir konuma taşımak (gereksiz — ikon-only zaten alanı çözüyor, FAB'ın thumb-reach konumu bilinçli bir karardı)
+- Aktif sekme rengi kategoriye göre ayrışır (prototipteki `tab-b`/`tab-c` renk sınıflarıyla birebir, Grafikler için yeni bir `tabD` tokeni eklendi): Genel Bakış mor (`tabA`), Son Hareketler yeşil (`tabC`), Grafikler altın/sarı (`tabD`), İstatistikler mavi (`tabB`)
 - Tab bar'ın ortasında, yükseltilmiş dairesel bir **"+" FAB** bulunur — bu, "Harcama Ekle" akışını her zaman bir dokunuş uzağında tutar
 - Üstteki bar sade tutulur: uygulama adı ve üç ikon-buton (Dışa Aktar, Paylaş, Çıkış Yap — üçüncüsü Bölüm 5.5'teki kimlik doğrulama kararıyla eklendi)
 - Tüm ikincil etkileşimler (harcama ekleme, tarih filtresi, export önizleme) **bottom sheet** olarak açılır — ayrı sayfa/modal yerine mobilde alışılmış, alttan kayan panel deseni kullanılır
@@ -108,6 +111,13 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 - İçerik, Genel Bakış'taki (artık kaldırılan) özet bölümünün yerini alır ve genişletilir: kısıtlı bir sayıya (önceki "ilk 40 kayıt") kesilmeden, **seçili zaman aralığındaki tüm işlemler** listelenir
 - Zaman Aralığı filtresi (Genel Bakış'la paylaşılan aynı `rangeStart`/`rangeEnd` state'i) bu sekmeyi de kapsar — kullanıcı "Bu Ay"/"Geçen Ay" gibi bir aralık seçtiğinde her iki sekme de aynı veriyi gösterir, tutarlılık korunur
 - **Sayfalama/sonsuz kaydırma v1 kapsamında değildir** — Supabase sorgusu zaten kullanıcının tüm verisini tek seferde çekiyor (bkz. Teknik Analiz Bölüm 10); çok uzun bir tarih aralığında binlerce kayıt performans sorunu yaratırsa bu v1.1'de ele alınacak bilinen bir risktir, şimdilik kabul edilebilir bir basitleştirme
+
+### 6.1.2 Grafikler Sekmesi (12 Eylül 2026)
+
+- Prototipin kendi "Grafikler" sekmesinin v1'e taşınmış hali: kendine ait, Genel Bakış'tan tamamen **bağımsız bir zaman aralığı filtresi** (kendi state'i, kendi Zaman Aralığı sheet'i) ve üç grafik — bar chart (kategoriye göre harcama), pie chart (kategori dağılımı) ve radar chart (kategori ağırlık haritası)
+- Bar chart, Genel Bakış'takiyle **aynı bileşen** (`CategoryBarChart.tsx`) — tasarruf segmenti, bara dokununca Harcama Ekle açma davranışı dahil, birebir aynı. Tek fark: hangi tarih aralığının verisini gösterdiği (kendi bağımsız filtresi)
+- Pie chart, daha önce Genel Bakış'tan kaldırılmış olan tekli donut görünümün (bkz. Bölüm 7 tablosu) bu sekmede yeniden kullanılmış hali
+- Radar chart, Genel Bakış'takiyle **aynı bileşen ve aynı kural** (en az 3 kategoride harcama yoksa gizlenir) — kasıtlı olarak iki yerde de var, çünkü her ikisi kendi bağımsız tarih aralığını yansıtıyor (Genel Bakış'ın varsayılan aralığı, Grafikler'in kullanıcının seçtiği aralık farklı olabilir)
 
 **Netlik notu (11 Eylül 2026):** TopBar'daki "Dışa Aktar" ve "Paylaş" ikonları **ayrı akışlar değildir** — ikisi de aynı ExportSheet'i ("Rapor Önizleme") açar. Kullanıcı, sheet içindeki İndir ya da Paylaş butonundan hangisini kullanacağına orada karar verir (bkz. Bölüm 5.3).
 
@@ -129,17 +139,18 @@ Bu genişlikte navigasyon ve ikincil etkileşim kalıpları köklü biçimde de�
 
 | Grafik Tipi | Davranış | Not |
 |---|---|---|
-| Bar Chart | Kategoriye göre harcama dağılımı; kullanıcı harcama yaptıkça ilgili bar büyür | Genel Bakış'ta — seçili dönemde toplam tasarruf > 0 ise sona ayrı görünümde bir "Tasarruf" barı eklenir (bkz. 7.2). **11 Eylül 2026 eklentisi:** Bir kategori barına dokunmak/tıklamak, o kategori önceden seçili olarak Harcama Ekle sheet'ini açar — prototipte "bir bara dokunarak o kategoriye harcama ekleyebilirsin" ipucuyla belirtilen davranış artık uygulamada da var. Tasarruf barı bu davranışa dahil değildir (bkz. 7.2). |
-| Pie Chart | Kategori bazlı oransal dağılım | Yalnızca İstatistikler'de, dönem karşılaştırmalı iç içe halka olarak (bkz. 7.1) — Genel Bakış'taki tekli görünüm 11 Eylül 2026'da kaldırıldı, İstatistikler'deki karşılaştırmayla yeterince kapsanıyordu |
+| Bar Chart | Kategoriye göre harcama dağılımı; kullanıcı harcama yaptıkça ilgili bar büyür | Genel Bakış'ta ve Grafikler'de (12 Eylül 2026, aynı bileşen — bkz. 6.1.2) — seçili dönemde bir kategoride tasarruf > 0 ise, o kategorinin barının ucuna stacked bir "tasarruf segmenti" eklenir (bkz. 7.2). **11 Eylül 2026 eklentisi:** Bir kategori barına dokunmak/tıklamak, o kategori önceden seçili olarak Harcama Ekle sheet'ini açar — prototipte "bir bara dokunarak o kategoriye harcama ekleyebilirsin" ipucuyla belirtilen davranış artık uygulamada da var. Tasarruf segmenti bu davranışa dahil değildir (bkz. 7.2). |
+| Pie Chart | Kategori bazlı oransal dağılım | Yalnızca Grafikler'de (12 Eylül 2026) — Genel Bakış'taki (11 Eylül 2026'da kaldırılmıştı) ve İstatistikler'deki iç içe halka (12 Eylül 2026'da tamamen kaldırıldı) karşılığı değil, tekli bir donut; bkz. 6.1.2 |
 | Pareto / Histogram | Kategorileri harcama büyüklüğüne göre sıralayıp kümülatif etkiyi %80 referans çizgisiyle gösterir | Yalnızca İstatistikler'de, dönem karşılaştırmalı olarak (bkz. 7.1) — Genel Bakış'taki tekli görünüm 11 Eylül 2026'da kaldırıldı, aynı gerekçeyle |
-| Radar / Ağırlık Haritası | Her kategorinin harcamasını, o dönemde harcaması olan kategorilerin ortalamasına göre konumlandırır | Genel Bakış'ta — yalnızca seçili dönemde en az 3 kategoride harcama varsa gösterilir, aksi halde gizlenir |
+| Radar / Ağırlık Haritası | Her kategorinin harcamasını, o dönemde harcaması olan kategorilerin ortalamasına göre konumlandırır | Genel Bakış'ta ve Grafikler'de (12 Eylül 2026, aynı bileşen, birbirinden bağımsız tarih aralıklarıyla — bkz. 6.1.2) — yalnızca seçili dönemde en az 3 kategoride harcama varsa gösterilir, aksi halde gizlenir |
 | Renk Kodlama | Her kategori sabit bir renkle temsil edilir, tüm grafiklerde ve chip'lerde tutarlı | Genel |
 
 ### 7.1 Dönem Karşılaştırma (Overplot) — İstatistikler Ekranı
 
-Prototipte doğrulanan çözüm:
+**12 Eylül 2026 revizyonu:** İç içe halka (nested pie) görselleştirmesi tamamen kaldırıldı — gruplu bar ve çift pareto çizgisi, dönem karşılaştırmasını zaten yeterince kapsıyor, yerine yeni bir şey eklenmedi.
+
+Prototipte doğrulanan, kalan çözüm:
 - **Bar chart:** İki dönem (Dönem A / Dönem B), her kategori için yan yana gruplu bar olarak gösterilir
-- **Pie chart:** İç içe iki halka — iç halka Dönem A, dış halka Dönem B; her ikisinde de dilimler kategori rengiyle boyanır
 - **Pareto:** İki dönemin barları yan yana, kümülatif % çizgileri (her dönem kendi toplamına göre) aynı eksende, Dönem A düz çizgi / Dönem B kesikli çizgi ile ayrıştırılır
 
 Dönem A ve Dönem B, ayrı renk kodları taşır (Dönem A = sıcak turuncu, Dönem B = turkuaz) ve bu iki renk kategori renklerinden bağımsız, sadece dönem karşılaştırma bağlamında kullanılır.
@@ -188,7 +199,7 @@ WALLT, bir Progressive Web App (PWA) olarak paketlenir; böylece kullanıcı tar
 | # | Soru | Durum |
 |---|---|---|
 | 1 | Kategori rengi custom kategorilerde nasıl atanacak? | ✅ Çözüldü — sabit bir palet dizisinden sırayla atama (bkz. Teknik Analiz Bölüm 4) |
-| 2 | Dönem karşılaştırmada pie chart overplot nasıl çözülecek? | ✅ Çözüldü — iç içe halka (Dönem A iç, Dönem B dış) |
+| 2 | Dönem karşılaştırmada pie chart overplot nasıl çözülecek? | ✅ Çözüldü — önce iç içe halka (Dönem A iç, Dönem B dış) ile, **12 Eylül 2026'da bu görselleştirme tamamen kaldırıldı** (gruplu bar + çift pareto çizgisi yeterli görüldü, yerine bir şey eklenmedi) |
 | 3 | Veri nerede saklanacak — local mı, cloud mu? | ✅ Çözüldü — Supabase (cloud), kullanıcı hesabına bağlı (bkz. Bölüm 10) |
 | 4 | Offline kullanım desteklenecek mi? | ✅ Çözüldü — Hayır, v1 kapsamında değil (Supabase internet bağlantısı gerektirir) |
 | 5 | Zaman dilimi (timezone) sınır durumları nasıl ele alınacak? | ⏳ Açık — Teknik Analiz Dokümanı'nda risk olarak işaretlendi |
