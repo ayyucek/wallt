@@ -9,7 +9,14 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import { CHART_GRID, CHART_MUTED, CHART_TICK, CHART_TOOLTIP_STYLE } from "@/lib/chartTheme";
+import {
+  CHART_GRID,
+  CHART_MUTED,
+  CHART_TICK,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+  CHART_TOOLTIP_STYLE,
+} from "@/lib/chartTheme";
 import { formatCurrency } from "@/lib/format";
 import type { RadarEntry } from "@/lib/types";
 
@@ -36,7 +43,12 @@ export default function CategoryRadarChart({ data, average }: CategoryRadarChart
           <PolarGrid stroke={CHART_GRID} />
           <PolarAngleAxis dataKey="category" tick={CHART_TICK} />
           <PolarRadiusAxis tick={{ fill: CHART_MUTED, fontSize: 9 }} axisLine={false} />
-          <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={CHART_TOOLTIP_STYLE} />
+          <Tooltip
+            formatter={(value) => formatCurrency(Number(value))}
+            contentStyle={CHART_TOOLTIP_STYLE}
+            itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+          />
           <Radar name="Harcama" dataKey="value" stroke={RADAR_ACCENT} fill={RADAR_ACCENT} fillOpacity={0.38} strokeWidth={2} />
           <Radar name="Ortalama" dataKey="average" stroke={CHART_MUTED} fill="none" strokeDasharray="5 4" strokeWidth={1.5} />
         </RadarChart>

@@ -10,7 +10,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CHART_GRID, CHART_TICK, CHART_TOOLTIP_STYLE, PERIOD_A, PERIOD_B } from "@/lib/chartTheme";
+import {
+  CHART_GRID,
+  CHART_TICK,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+  CHART_TOOLTIP_STYLE,
+  PERIOD_A,
+  PERIOD_B,
+} from "@/lib/chartTheme";
 import { formatCurrency } from "@/lib/format";
 import type { CompareParetoEntry } from "@/lib/types";
 
@@ -66,6 +74,8 @@ export default function CompareParetoChart({
                 : [formatCurrency(Number(value)), name]
             }
             contentStyle={CHART_TOOLTIP_STYLE}
+            itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
           />
           <Bar yAxisId="left" dataKey="a" fill={PERIOD_A} fillOpacity={0.85} radius={[6, 6, 0, 0]} name={periodALabel} />
           <Bar yAxisId="left" dataKey="b" fill={PERIOD_B} fillOpacity={0.85} radius={[6, 6, 0, 0]} name={periodBLabel} />

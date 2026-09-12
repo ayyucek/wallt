@@ -1,7 +1,15 @@
 "use client";
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CHART_GRID, CHART_TICK, CHART_TOOLTIP_STYLE, PERIOD_A, PERIOD_B } from "@/lib/chartTheme";
+import {
+  CHART_GRID,
+  CHART_TICK,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+  CHART_TOOLTIP_STYLE,
+  PERIOD_A,
+  PERIOD_B,
+} from "@/lib/chartTheme";
 import { formatCurrency } from "@/lib/format";
 import type { CompareBarEntry } from "@/lib/types";
 
@@ -32,7 +40,12 @@ export default function CompareBarChart({ data, periodALabel, periodBLabel }: Co
             height={46}
           />
           <YAxis tick={CHART_TICK} axisLine={false} tickLine={false} />
-          <Tooltip formatter={(value) => formatCurrency(Number(value))} contentStyle={CHART_TOOLTIP_STYLE} />
+          <Tooltip
+            formatter={(value) => formatCurrency(Number(value))}
+            contentStyle={CHART_TOOLTIP_STYLE}
+            itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+            labelStyle={CHART_TOOLTIP_LABEL_STYLE}
+          />
           <Bar dataKey="A" fill={PERIOD_A} radius={[8, 8, 0, 0]} name={periodALabel} />
           <Bar dataKey="B" fill={PERIOD_B} radius={[8, 8, 0, 0]} name={periodBLabel} />
         </BarChart>

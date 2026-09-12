@@ -10,7 +10,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { CHART_CURSOR_FILL, CHART_GRID, CHART_TICK, CHART_TOOLTIP_STYLE } from "@/lib/chartTheme";
+import {
+  CHART_CURSOR_FILL,
+  CHART_GRID,
+  CHART_TICK,
+  CHART_TOOLTIP_ITEM_STYLE,
+  CHART_TOOLTIP_LABEL_STYLE,
+  CHART_TOOLTIP_STYLE,
+} from "@/lib/chartTheme";
 import { formatCurrency } from "@/lib/format";
 import type { CategoryTotal } from "@/lib/types";
 
@@ -57,6 +64,8 @@ export default function CategoryBarChart({ data, onBarClick }: CategoryBarChartP
         <Tooltip
           formatter={(value) => formatCurrency(Number(value))}
           contentStyle={CHART_TOOLTIP_STYLE}
+          itemStyle={CHART_TOOLTIP_ITEM_STYLE}
+          labelStyle={CHART_TOOLTIP_LABEL_STYLE}
           cursor={{ fill: CHART_CURSOR_FILL }}
         />
         <Bar

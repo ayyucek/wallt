@@ -27,5 +27,12 @@ export const CHART_TOOLTIP_STYLE = {
   boxShadow: "0 10px 28px rgba(0,0,0,.45)",
   fontFamily: "Inter, sans-serif",
   fontSize: 12,
-  color: "#f1eefa",
+  color: CHART_INK,
 };
+
+// Recharts, tooltip satırlarına contentStyle.color'ı DEVRALMAZ — her satırı
+// kendi itemStyle'ıyla render eder ve rengi (entry.color yoksa) varsayılan
+// olarak #000'a düşürür. Başlık (label) de aynı şekilde ayrı bir labelStyle
+// kullanır. Koyu temada okunabilirlik için ikisi de ink rengine sabitlenmeli.
+export const CHART_TOOLTIP_ITEM_STYLE = { color: CHART_INK };
+export const CHART_TOOLTIP_LABEL_STYLE = { color: CHART_INK };
