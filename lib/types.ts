@@ -12,7 +12,7 @@ export interface Transaction {
   type: TransactionType;
   title: string;
   description: string; // boş string olabilir, opsiyonel
-  amount: number; // TL, kuruş yok (tam sayı)
+  amount: number; // TL, iki ondalık basamağa kadar (kuruş) desteklenir
   categoryId: string;
   timestamp: string; // ISO 8601 string, new Date().toISOString()
 }

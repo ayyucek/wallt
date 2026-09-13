@@ -121,7 +121,7 @@ export interface Transaction {
   type: TransactionType; // "expense" (varsayılan) | "saving"
   title: string;
   description: string;  // boş string olabilir, opsiyonel
-  amount: number;        // TL, kuruş yok (tam sayı)
+  amount: number;        // TL, iki ondalık basamağa kadar (kuruş) desteklenir — 13 Eylül 2026 revizyonu
   categoryId: string;
   timestamp: string;      // ISO 8601 string, new Date().toISOString()
 }
@@ -147,6 +147,10 @@ export interface RadarEntry {
   average: number;
 }
 ```
+
+**13 Eylül 2026 revizyonu — kuruş desteği:** v1'in ilk kararı (`amount`'ın tam sayı, kuruşsuz olması) gözden geçirildi. Supabase'deki `transactions.amount` kolonu `integer`'dan `numeric(10,2)`'ye taşındı (`supabase/migrations/20260913_amount_decimal.sql` — mevcut tam sayı kayıtlar kayıpsız genişler, örn. `100` → `100.00`; `check (amount > 0)` kısıtı aynen korunur). Postgres'te para birimi için `numeric`/`decimal` kullanılır, `float`/`real` **asla** kullanılmaz (ikili kayan nokta ondalık parayı kesin temsil edemez).
+
+Uygulama katmanında ayrı bir "kuruş-integer" birimine (örn. `4312`) geçilmedi — bu, `aggregate`/`paretoData`/`radarData`/`withSavingSegments` gibi tüm hesaplama fonksiyonlarının birim dönüşümü bilmesini gerektirirdi. Bunun yerine tek koruma noktası **gösterim anı**: `lib/format.ts`'teki `formatCurrency`, `Math.round(amount * 100) / 100` ile 2 ondalık basamağa yuvarlar — kişisel ölçekli bir uygulamada (yüzlerce/binlerce işlem) toplama sırasında birikebilecek floating-point gürültüsü (~1e-10 mertebesi) bu yuvarlamayla tamamen yutulur, hesaplama fonksiyonlarının kendisi değişmeden doğru çalışmaya devam eder. `formatCurrency` ayrıca ondalık ayracı olarak **nokta** kullanır (`toFixed(2)`, binlik ayraç yok) — `tr-TR` locale'inin virgül-ondalık kuralıyla çelişmemesi için kasıtlı bir sapma.
 
 **⚠️ Bilinen teknik risk — zaman dilimi:** Prototipte `timestamp.slice(0, 10)` ile tarih string'i çıkarılıyor (`txDateStr` fonksiyonu). Bu, kullanıcının tarayıcı saat dilimi UTC'den farklıysa gün sınırında ±1 günlük kaymalara yol açabilir. Gerçek üründe bu fonksiyonu **kullanıcının yerel saat dilimine göre** gün stringi üretecek şekilde yazın (`date-fns-tz` gibi bir kütüphane veya `Intl.DateTimeFormat` ile). Bu, PRD'nin açık sorular bölümünde işaretlenmemiş ama koda geçerken mutlaka çözülmesi gereken bir detaydır.
 

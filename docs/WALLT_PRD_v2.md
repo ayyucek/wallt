@@ -51,7 +51,7 @@ Sheet'in üstünde bir **Giriş Tipi** seçici bulunur: **Harcama** / **Tasarruf
 Form alanları:
 - **Başlık** (zorunlu) — örn. "Öğle yemeği" (Tasarruf'ta örn. "Kahve almadım")
 - **Açıklama** (opsiyonel) — serbest metin not alanı
-- **Tutar** (₺, zorunlu)
+- **Tutar** (₺, zorunlu) — **13 Eylül 2026 revizyonu:** iki ondalık basamağa kadar (kuruş) desteklenir, ondalık ayracı nokta (örn. "43.12"); v1'in ilk kararı (kuruşsuz tam sayı) terk edildi
 - **Tarih ve Saat** (zorunlu, **düzenlenebilir**) — varsayılan olarak "şu an" ile dolu gelir, kullanıcı geçmişe dönük bir harcamayı da girebilir
 - **Kategori** (hybrid model, bkz. 5.2)
 
