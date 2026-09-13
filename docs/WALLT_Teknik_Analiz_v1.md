@@ -38,8 +38,10 @@ wallt/
 │   ├── page.tsx                 # Genel Bakış + İstatistikler tab'ları burada state ile yönetilir
 │   ├── globals.css              # Tailwind + font importları
 │   ├── manifest.ts               # PWA manifest (Faz 10, MetadataRoute.Manifest) — icons[] public/icons/*'a işaret eder
-│   └── login/
-│       └── page.tsx              # email+şifre giriş/kayıt ekranı
+│   ├── login/
+│   │   └── page.tsx              # email+şifre giriş/kayıt ekranı
+│   └── reset-password/
+│       └── page.tsx              # şifre sıfırlama linkiyle ulaşılan yeni şifre belirleme ekranı (13 Eylül 2026)
 ├── proxy.ts                      # Next.js 16'da middleware.ts'in yeni adı; oturumu tazeler + route korur
 ├── public/
 │   ├── icons/                     # statik PWA/favicon PNG'leri (tasarımcı tarafından sağlandı, 11 Eylül 2026)
@@ -53,7 +55,8 @@ wallt/
 │   │   ├── Sidebar.tsx            # masaüstü (≥lg) navigasyonu, ara responsive fazında eklendi
 │   │   └── Fab.tsx
 │   ├── auth/
-│   │   └── AuthForm.tsx           # giriş/kayıt formu (prototipte karşılığı yok, Faz 7'de net-new)
+│   │   ├── AuthForm.tsx           # giriş/kayıt formu (prototipte karşılığı yok, Faz 7'de net-new); 13 Eylül 2026'da 3. bir "forgot" modu eklendi
+│   │   └── ResetPasswordForm.tsx  # /reset-password'ün tek içeriği (13 Eylül 2026, net-new)
 │   ├── pwa/
 │   │   ├── ServiceWorkerRegister.tsx  # public/sw.js'i client'ta register eder (Faz 10)
 │   │   └── InstallHint.tsx        # "ana ekrana ekle" onboarding ipucu (Faz 10)
@@ -382,6 +385,15 @@ Son Hareketler sekmesine, Genel Bakış/Grafikler'den tamamen bağımsız kendi 
 - `toggleHareketlerCategory(id)`: `hareketlerCategoryIds` dizisinde id varsa çıkarır, yoksa ekler.
 - `hareketlerFiltered = useMemo(...)`: önce `filterByRange(transactions, hareketlerRangeStart, hareketlerRangeEnd)`, sonra (dizi boş değilse) `categoryId` ile eşleşenlere daraltır. Tasarruf girişleri de `categoryId` taşıdığı için aynı filtreye tabidir.
 - Hareketler sekmesi başlığına, Grafikler'deki tek-ikon "Filtrele" deseni eklendi; `TransactionList`'e artık `transactions` yerine `hareketlerFiltered` geçiriliyor.
+
+### 5.7 Şifremi Unuttum Akışı (13 Eylül 2026)
+
+Bir kullanıcının (`murathan.bagci@gmail.com`) "invalid login credentials" hatası alması üzerine yapılan inceleme (Dashboard → Authentication → Users kaydı: hesap `confirmed`, ama `last_signed_in_at` kayıt anından beri hiç güncellenmemiş) şifre-unutma senaryosunu doğruladı ve uygulamada bunu çözecek **hiçbir akışın olmadığını** ortaya çıkardı (`resetPassword`/`forgot`/`recover` için kod tabanında sıfır sonuç). Bu revizyon eksiği kapatıyor:
+
+- **`AuthForm.tsx`:** `Mode` tipi üçüncü bir değer alıyor: `"signin" | "signup" | "forgot"`. Signin modunda şifre alanının altında bir **"Şifremi unuttum?"** linki, `mode`'u `"forgot"`a çeker — bu modda üst `Giriş Yap`/`Kayıt Ol` sekme çifti gizlenir, yalnızca email alanı + `"Sıfırlama Bağlantısı Gönder"` butonu + `"Girişe dön"` linki gösterilir. Submit, `supabase.auth.resetPasswordForEmail(email, { redirectTo: \`${window.location.origin}/reset-password\` })` çağırır. Hesap var/yok bilgisini sızdırmamak için (Supabase'in kendi davranışıyla tutarlı — bkz. `signInWithPassword`'deki "Invalid login credentials" mesajının hem yanlış şifre hem de var-olmayan email için aynı olması), başarı mesajı her zaman aynı, belirsiz ifadeyi kullanır: *"Eğer bu email'e kayıtlı bir hesap varsa, şifre sıfırlama bağlantısı gönderildi."*
+- **`components/auth/ResetPasswordForm.tsx` (net-new) + `app/reset-password/page.tsx` (net-new):** Sıfırlama linkine tıklandığında ulaşılan sayfa — iki şifre alanı (yeni şifre + tekrar), `supabase.auth.updateUser({ password })` çağırır. İki ayrı hata state'i var (`mismatchError`/`sessionError`) — şifreler eşleşmiyorsa sade bir mesaj, ama `updateUser` gerçekten hata dönerse (geçersiz/süresi dolmuş kurtarma oturumu — test sırasında gözlemlenen gerçek mesaj: `"Auth session missing!"`) ek bir "bağlantının süresi dolmuş olabilir, tekrar dene" ipucu eklenir. Bu ikisinin ayrı tutulması önemli: aksi halde basit bir yazım hatası bile kullanıcıya "bağlantın bozuk" gibi yanıltıcı bir mesaj gösterirdi.
+- **`proxy.ts`:** `PUBLIC_PATHS`'e `"/reset-password"` eklendi. Bu **kritik** bir düzeltme — kurtarma linkine tıklandığında ilk istek, tarayıcı kodu henüz değişimi (code exchange) yapmadan proxy'ye session cookie'si OLMADAN ulaşır; sayfa public değilse bu istek doğrudan `/login`'e yönlendirilir ve kurtarma kodu (URL'deki `?code=`) hiç işlenmeden kaybolurdu — akış sw.js/manifest.webmanifest'in daha önce aynı nedenle (11 Eylül 2026) public listeye eklenmesiyle birebir aynı kökene sahip bir sınıf hata.
+- **`docs/WALLT_PRD_v2.md` Bölüm 5.5:** "Şifremi unuttum akışı... ayrı bir ekran tasarımı gerektirmez" ifadesi yanlıştı (hiç var olmayan bir özelliği var sayıyordu) — düzeltildi.
 
 ---
 

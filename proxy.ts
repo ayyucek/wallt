@@ -5,7 +5,12 @@ import { NextResponse, type NextRequest } from "next/server";
 // (bkz. node_modules/next/dist/docs/.../proxy.md). Bu dosya her istekte oturumu
 // tazeler ve giriş yapılmadan "/" korunan alana erişimi engeller.
 
-const PUBLIC_PATHS = ["/login"];
+// "/reset-password" da public olmalı: kullanıcı şifre sıfırlama linkine
+// tıkladığında ilk istek proxy'e session cookie'si OLMADAN gelir (kurtarma
+// kodu, tarayıcı client'ının henüz işlemediği bir URL parametresidir) — public
+// olmasaydı bu istek /login'e yönlendirilir ve kod hiç değişime uğramadan
+// kaybolurdu (13 Eylül 2026, Şifremi Unuttum akışı eklentisi).
+const PUBLIC_PATHS = ["/login", "/reset-password"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

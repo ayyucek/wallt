@@ -85,7 +85,7 @@ Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif
 - Kullanıcı, **email + şifre** ile kayıt olur ve giriş yapar (Supabase Auth üzerinden)
 - Oturum açılmadan uygulamanın geri kalanına erişilemez — ilk açılışta giriş/kayıt ekranı gösterilir
 - Oturum durumu tarayıcıda kalıcıdır (Supabase session); sayfa yenilendiğinde kullanıcı tekrar giriş yapmak zorunda kalmaz
-- Şifremi unuttum akışı, Supabase'in hazır e-posta linkiyle desteklenir — v1 kapsamında ayrı bir ekran tasarımı gerektirmez
+- **Şifremi Unuttum akışı (13 Eylül 2026 eklentisi):** Giriş ekranındaki "Şifremi unuttum?" linki, kullanıcının email'ine Supabase'in gönderdiği bir sıfırlama bağlantısı tetikler; bağlantı, yeni bir **`/reset-password`** ekranına yönlendirir (yeni şifre + tekrar alanı). Hesap var/yok bilgisini sızdırmamak için gönderim sonrası mesaj her zaman aynıdır ("eğer bu email'e kayıtlı bir hesap varsa..."). Bağlantı geçersiz/süresi dolmuşsa kullanıcıya bunu belirten bir hata gösterilir, akışı tekrar başlatmasına yönlendirilir. (Bu dokümanın önceki sürümünde "ayrı bir ekran gerektirmez" deniyordu — pratikte bir kullanıcının giriş yapamaması üzerine yapılan inceleme, böyle bir akışın hiç var olmadığını ortaya çıkardı; bu revizyon o eksiği kapatır.)
 - Tüm harcama/tasarruf/kategori verisi kullanıcı hesabına bağlıdır; bir kullanıcı yalnızca kendi verisini görür (bkz. Bölüm 10)
 
 ## 6. Bilgi Mimarisi ve Navigasyon (Mobil-First)
