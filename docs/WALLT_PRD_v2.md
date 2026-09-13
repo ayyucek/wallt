@@ -57,6 +57,15 @@ Form alanları:
 
 Tüm zorunlu alanlar doldurulmadan "Harcama Ekle" / "Tasarruf Ekle" butonu pasif kalır. Başarılı eklemede sheet kapanır ve kısa bir onay bildirimi (toast) gösterilir (Tasarruf girişinde toast metni farklıdır, örn. "Tasarruf kaydedildi — ₺150").
 
+### 5.1.1 İşlem Düzenleme ve Silme (13 Eylül 2026 eklentisi)
+
+Son Hareketler listesindeki **her satır dokunulabilir**. Dokununca, o kaydın başlığıyla açılan küçük bir aksiyon sheet'i iki seçenek sunar: **Düzenle** ve **Sil**. Swipe-to-reveal veya kalıcı ikon butonları yerine bu desen seçildi — satırlar zaten yoğun (nokta+başlık+tutar, kategori+tarih+rozet, opsiyonel açıklama) ve kalıcı ikonlar bunu daha da sıkışık gösterirdi; swipe-gesture ise gereksiz bir karmaşıklık katardı.
+
+- **Düzenleme**, harcama ekleme ile **aynı sheet'i** (Harcama Ekle) yeniden kullanır — form, seçili kaydın değerleriyle önceden doldurulmuş gelir, buton "Kaydet" olur. Tip dahil (Harcama ↔ Tasarruf) her alan değiştirilebilir — örn. yanlışlıkla "Harcama" olarak girilmiş bir kaydı sonradan "Tasarruf"a çevirmek mümkündür.
+- **Silme**, iki adımlı bir onay gerektirir: "Sil"e dokununca *"Bu kaydı silmek istediğine emin misin? Bu işlem geri alınamaz."* diyen ayrı bir onay sheet'i açılır. Geri-al (undo) toast'ı yerine bu tercih edildi — silme geri alınamaz bir işlem olduğu için net bir onay, hızlı ama belirsiz bir undo penceresinden daha güvenli.
+- Düzenleme/silme, harcama ve tasarruf kayıtları için **birebir aynı şekilde** çalışır — özel bir dallanma yoktur.
+- Bir kayıt düzenlenip/silinince, ona bağlı tüm grafikler (bar, pie, pareto, radar, hero toplamı, Grafikler/İstatistikler sekmeleri) **anında** güncellenir — bu, kayıtların tek bir merkezi state'ten türetilmesinin doğal bir sonucudur, özel bir senkronizasyon kodu gerekmez.
+
 ### 5.2 Kategori Yönetimi
 
 - **Hybrid model**: Önceden tanımlı sabit kategori seti (Yemek, Ulaşım, Eğlence, Market, Fatura, Sağlık, Diğer) sağlanır

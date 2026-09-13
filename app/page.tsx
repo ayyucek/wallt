@@ -18,6 +18,7 @@ import CategoryBarChart from "@/components/genel/CategoryBarChart";
 import CategoryPieChart from "@/components/genel/CategoryPieChart";
 import CategoryRadarChart from "@/components/genel/CategoryRadarChart";
 import TransactionList from "@/components/hareketler/TransactionList";
+import TransactionActionsSheet from "@/components/hareketler/TransactionActionsSheet";
 import HareketlerRangePicker from "@/components/hareketler/HareketlerRangePicker";
 import CategoryFilterChips from "@/components/hareketler/CategoryFilterChips";
 import PeriodPicker from "@/components/istatistikler/PeriodPicker";
@@ -42,7 +43,14 @@ import {
   type QuickRangeKey,
 } from "@/lib/calculations";
 import { formatCurrency, formatRangeLabel } from "@/lib/format";
-import { addCategory, addTransaction, fetchCategories, fetchTransactions } from "@/lib/storage";
+import {
+  addCategory,
+  addTransaction,
+  deleteTransaction,
+  fetchCategories,
+  fetchTransactions,
+  updateTransaction,
+} from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
 import type { Category, DateRange, Transaction } from "@/lib/types";
 
@@ -72,6 +80,9 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<TabKey>("genel");
   const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [initialAddCategoryId, setInitialAddCategoryId] = useState<string | undefined>(undefined);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | undefined>(undefined);
+  const [actionsSheetTransaction, setActionsSheetTransaction] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const [rangeSheetOpen, setRangeSheetOpen] = useState(false);
 
@@ -263,17 +274,48 @@ export default function Home() {
     router.refresh();
   }
 
-  async function handleAddTransaction(input: Omit<Transaction, "id">) {
+  function sortByTimestampDesc(list: Transaction[]): Transaction[] {
+    return [...list].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  async function handleSubmitTransaction(input: Omit<Transaction, "id">) {
+    if (editingTransaction) {
+      const tx = await updateTransaction(editingTransaction.id, input);
+      setTransactions((prev) => sortByTimestampDesc(prev.map((t) => (t.id === tx.id ? tx : t))));
+      setAddSheetOpen(false);
+      setToast(`"${tx.title}" güncellendi`);
+      return;
+    }
+
     const tx = await addTransaction(input);
-    setTransactions((prev) =>
-      [...prev, tx].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    );
+    setTransactions((prev) => sortByTimestampDesc([...prev, tx]));
     setAddSheetOpen(false);
     setToast(
       input.type === "saving"
         ? `Tasarruf kaydedildi — ${formatCurrency(input.amount)}`
         : `"${input.title}" eklendi — ${formatCurrency(input.amount)}`
     );
+  }
+
+  function openEditSheet(transaction: Transaction) {
+    setEditingTransaction(transaction);
+    setInitialAddCategoryId(undefined);
+    setAddSheetOpen(true);
+    setActionsSheetTransaction(null);
+  }
+
+  function requestDeleteTransaction(transaction: Transaction) {
+    setDeletingTransaction(transaction);
+    setActionsSheetTransaction(null);
+  }
+
+  async function handleConfirmDelete() {
+    if (!deletingTransaction) return;
+    const tx = deletingTransaction;
+    await deleteTransaction(tx.id);
+    setTransactions((prev) => prev.filter((t) => t.id !== tx.id));
+    setDeletingTransaction(null);
+    setToast(`"${tx.title}" silindi`);
   }
 
   async function handleAddCategory(name: string): Promise<Category> {
@@ -284,6 +326,7 @@ export default function Home() {
   }
 
   function openAddSheet(categoryId?: string) {
+    setEditingTransaction(undefined);
     setInitialAddCategoryId(categoryId);
     setAddSheetOpen(true);
   }
@@ -358,7 +401,11 @@ export default function Home() {
 
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
                   <h3 className="mb-1 text-sm font-bold text-ink">Son Hareketler</h3>
-                  <TransactionList transactions={hareketlerFiltered} categories={categories} />
+                  <TransactionList
+                    transactions={hareketlerFiltered}
+                    categories={categories}
+                    onRowClick={setActionsSheetTransaction}
+                  />
                 </section>
               </div>
             )}
@@ -468,14 +515,69 @@ export default function Home() {
         />
       </div>
 
-      <BottomSheet open={addSheetOpen} onClose={() => setAddSheetOpen(false)} title="Harcama Ekle">
+      <BottomSheet
+        open={addSheetOpen}
+        onClose={() => setAddSheetOpen(false)}
+        title={
+          editingTransaction
+            ? editingTransaction.type === "saving"
+              ? "Tasarrufu Düzenle"
+              : "Harcamayı Düzenle"
+            : "Harcama Ekle"
+        }
+      >
         <AddExpenseSheet
           categories={categories}
           initialCategoryId={initialAddCategoryId}
-          onSubmit={handleAddTransaction}
+          editingTransaction={editingTransaction}
+          onSubmit={handleSubmitTransaction}
           onAddCategory={handleAddCategory}
           onClose={() => setAddSheetOpen(false)}
         />
+      </BottomSheet>
+
+      <BottomSheet
+        open={actionsSheetTransaction !== null}
+        onClose={() => setActionsSheetTransaction(null)}
+        title={actionsSheetTransaction?.title || "İşlem"}
+      >
+        {actionsSheetTransaction && (
+          <TransactionActionsSheet
+            onEdit={() => openEditSheet(actionsSheetTransaction)}
+            onDelete={() => requestDeleteTransaction(actionsSheetTransaction)}
+          />
+        )}
+      </BottomSheet>
+
+      <BottomSheet
+        open={deletingTransaction !== null}
+        onClose={() => setDeletingTransaction(null)}
+        title="Emin misin?"
+      >
+        {deletingTransaction && (
+          <div className="flex flex-col gap-4">
+            <p className="text-sm font-medium text-muted">
+              &ldquo;{deletingTransaction.title}&rdquo; kaydını silmek istediğine emin misin? Bu işlem
+              geri alınamaz.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="flex-1 rounded-pill bg-category-saglik py-3 text-sm font-bold text-white"
+              >
+                Sil
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeletingTransaction(null)}
+                className="flex-1 rounded-pill bg-surface2 py-3 text-sm font-bold text-ink"
+              >
+                Vazgeç
+              </button>
+            </div>
+          </div>
+        )}
       </BottomSheet>
 
       <BottomSheet open={exportSheetOpen} onClose={() => setExportSheetOpen(false)} title="Rapor Önizleme">

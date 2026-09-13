@@ -68,6 +68,28 @@ export async function addTransaction(input: Omit<Transaction, "id">): Promise<Tr
   return rowToTransaction(data);
 }
 
+export async function updateTransaction(
+  id: string,
+  input: Omit<Transaction, "id">
+): Promise<Transaction> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("transactions")
+    .update({
+      type: input.type,
+      title: input.title,
+      description: input.description,
+      amount: input.amount,
+      category_id: input.categoryId,
+      occurred_at: input.timestamp,
+    })
+    .eq("id", id)
+    .select(TRANSACTION_COLUMNS)
+    .single();
+  if (error) throw error;
+  return rowToTransaction(data);
+}
+
 export async function deleteTransaction(id: string): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from("transactions").delete().eq("id", id);

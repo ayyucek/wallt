@@ -395,6 +395,22 @@ Bir kullanıcının (`murathan.bagci@gmail.com`) "invalid login credentials" hat
 - **`proxy.ts`:** `PUBLIC_PATHS`'e `"/reset-password"` eklendi. Bu **kritik** bir düzeltme — kurtarma linkine tıklandığında ilk istek, tarayıcı kodu henüz değişimi (code exchange) yapmadan proxy'ye session cookie'si OLMADAN ulaşır; sayfa public değilse bu istek doğrudan `/login`'e yönlendirilir ve kurtarma kodu (URL'deki `?code=`) hiç işlenmeden kaybolurdu — akış sw.js/manifest.webmanifest'in daha önce aynı nedenle (11 Eylül 2026) public listeye eklenmesiyle birebir aynı kökene sahip bir sınıf hata.
 - **`docs/WALLT_PRD_v2.md` Bölüm 5.5:** "Şifremi unuttum akışı... ayrı bir ekran tasarımı gerektirmez" ifadesi yanlıştı (hiç var olmayan bir özelliği var sayıyordu) — düzeltildi.
 
+### 5.8 İşlem Düzenleme ve Silme (13 Eylül 2026)
+
+Prototipte bu özellik hiç yoktu (`docs/WALLT_Prototype.jsx`'te delete/edit/swipe/kebab-menü için sıfır sonuç) — tasarım tamamen WALLT'a özgü. Erişim deseni, düzenleme yaklaşımı ve silme onayı kararları için bkz. PRD 5.1.1.
+
+- **`lib/storage.ts`:** `updateTransaction(id, input)` eklendi — `addTransaction`'ın birebir aynısı, `.update().eq("id", id)` ile. RLS zaten hazırdı (`transactions_update_own`/`transactions_delete_own` policy'leri Faz 8'de, `20260911_init_schema.sql`'de kuruldu) — ek migration gerekmedi.
+- **`components/sheets/AddExpenseSheet.tsx`:** yeni opsiyonel `editingTransaction?: Transaction` prop'u. Verilirse tüm `useState` başlangıç değerleri ondan okunur — `BottomSheet` kapalıyken child'ı tamamen unmount ettiği için (`if (!open) return null`), sheet her açılışta baştan mount olur ve ayrı bir reset efektine gerek kalmaz. `onSubmit` prop'unun imzası **değişmedi** — hangi işlemin (ekleme/güncelleme) yapılacağına `page.tsx`'teki çağıran taraf karar verir, bileşenin kendisi bunu bilmez. Buton etiketi `editingTransaction` varsa "Kaydet" (Check ikonu), yoksa eskisi gibi "Harcama Ekle"/"Tasarruf Ekle" (Plus ikonu).
+- **`components/hareketler/TransactionList.tsx`:** satırlar artık `<button>` — yeni `onRowClick?: (t: Transaction) => void` prop'u ile tıklanabilir.
+- **`components/hareketler/TransactionActionsSheet.tsx` (net-new):** Düzenle (Pencil ikonu, nötr) / Sil (Trash2 ikonu, `bg-category-saglik/15` + `text-category-saglik` — uygulamanın zaten hata mesajlarında kullandığı "tehlike" tonu) butonları.
+- **`app/page.tsx`:**
+  - Yeni state: `editingTransaction`, `actionsSheetTransaction`, `deletingTransaction`.
+  - `handleSubmitTransaction`: `editingTransaction` doluysa `updateTransaction` + `transactions` state'inde ilgili satırı `map` ile değiştirir, boşsa eskisi gibi `addTransaction` + `[...prev, tx]`. Her iki dalda da sonuç `sortByTimestampDesc` ile yeniden sıralanır.
+  - `openEditSheet(transaction)`: `editingTransaction`'ı set edip aynı `addSheetOpen` state'ini (yeni bir paralel state değil) açar — ekleme ve düzenleme aynı sheet'i paylaşır.
+  - `requestDeleteTransaction`/`handleConfirmDelete`: iki adımlı onay akışını yönetir; onaylanınca `deleteTransaction` + `transactions`'tan `filter` ile çıkarma.
+  - `BottomSheet`'in dış `title`'ı artık `editingTransaction`'a göre "Harcamayı Düzenle"/"Tasarrufu Düzenle"/"Harcama Ekle" arasında değişir.
+  - Grafiklerin canlı güncellenmesi (bar/pie/pareto/radar/hero toplamı, kategori değişimi dahil) **zaten var olan mimarinin doğal sonucu** — `transactions` tek bir state dizisi, tüm grafik verileri bundan türeyen `useMemo`'lar; `setTransactions`'ı doğru güncellemek yeterli, `aggregate()`/`withSavingSegments()` her render'da `categoryId`'ye göre yeniden gruplar.
+
 ---
 
 ## 6. Build Sırası (Fazlar)

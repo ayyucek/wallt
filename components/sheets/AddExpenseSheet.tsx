@@ -1,12 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Plus, X } from "lucide-react";
+import { Check, Plus, X } from "lucide-react";
 import type { Category, Transaction, TransactionType } from "@/lib/types";
 
 interface AddExpenseSheetProps {
   categories: Category[];
   initialCategoryId?: string;
+  // Düzenleme modu (13 Eylül 2026 eklentisi): verilirse form bu kaydın
+  // değerleriyle önceden doldurulur ve buton "Kaydet" olur. Sheet her
+  // açılışta BottomSheet tarafından baştan mount edildiği için (bkz.
+  // BottomSheet.tsx — kapalıyken child unmount olur), ayrı bir reset
+  // efektine gerek kalmadan initial state doğrudan bundan okunabilir.
+  editingTransaction?: Transaction;
   onSubmit: (input: Omit<Transaction, "id">) => Promise<void>;
   onAddCategory: (name: string) => Promise<Category>;
   onClose: () => void;
@@ -23,18 +29,23 @@ function toDatetimeLocalValue(d: Date): string {
 export default function AddExpenseSheet({
   categories,
   initialCategoryId,
+  editingTransaction,
   onSubmit,
   onAddCategory,
   onClose,
 }: AddExpenseSheetProps) {
-  const [entryType, setEntryType] = useState<TransactionType>("expense");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState(
-    initialCategoryId ?? categories[0]?.id ?? ""
+  const [entryType, setEntryType] = useState<TransactionType>(editingTransaction?.type ?? "expense");
+  const [title, setTitle] = useState(editingTransaction?.title ?? "");
+  const [description, setDescription] = useState(editingTransaction?.description ?? "");
+  const [amount, setAmount] = useState(
+    editingTransaction ? String(editingTransaction.amount) : ""
   );
-  const [dateTimeValue, setDateTimeValue] = useState(() => toDatetimeLocalValue(new Date()));
+  const [selectedCategoryId, setSelectedCategoryId] = useState(
+    editingTransaction?.categoryId ?? initialCategoryId ?? categories[0]?.id ?? ""
+  );
+  const [dateTimeValue, setDateTimeValue] = useState(() =>
+    toDatetimeLocalValue(editingTransaction ? new Date(editingTransaction.timestamp) : new Date())
+  );
   const [addingCategory, setAddingCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -232,7 +243,8 @@ export default function AddExpenseSheet({
               : "bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] shadow-btn-primary"
           }`}
         >
-          <Plus size={14} /> {submitting ? "..." : isSaving ? "Tasarruf Ekle" : "Harcama Ekle"}
+          {editingTransaction ? <Check size={14} /> : <Plus size={14} />}{" "}
+          {submitting ? "..." : editingTransaction ? "Kaydet" : isSaving ? "Tasarruf Ekle" : "Harcama Ekle"}
         </button>
         <button
           type="button"
