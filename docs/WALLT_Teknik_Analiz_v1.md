@@ -440,6 +440,26 @@ Gerçek bir iPhone'da iki belirti bildirildi: (1) Harcama Ekle sheet'i açıkken
 - **Viewport meta:** `app/layout.tsx`'teki `viewport` export'unda `maximum-scale`/`user-scalable` gibi bir kısıtlama hiç yoktu ve font-size düzeltmesi tek başına yeterli olduğundan eklenmedi — erişilebilirlik açısından kullanıcının sayfayı elle zoom'lama (pinch-zoom) yeteneği kısıtlanmadı.
 - **Doğrulama:** Gerçek cihaz erişimi olmadığından, düzeltme render edilmiş DOM'dan `getComputedStyle(el).fontSize` okunarak doğrulandı — giriş formu, AddExpenseSheet'in 5 input'u (Yeni Kategori dahil), DateRangeSheet, HareketlerRangePicker ve PeriodPicker'ın (4 input, Dönem A+B) tümünde `16px` ölçüldü. iOS'un zoom-on-focus davranışının kendisi (WebKit'e özgü) Browser pane'de test edilemez — **bu değişikliğin gerçek etkisini gerçek iPhone'da yeniden doğrulaman gerekiyor.**
 
+### 5.11 Grafiklerde iOS Metin/Görsel Seçme Davranışı (14 Eylül 2026)
+
+İstatistikler'deki karşılaştırma grafiklerinde bir bara/noktaya dokunulduğunda tooltip'in yanında iOS Safari'nin kendi "metin seçme" davranışı da tetikleniyordu (mavi seçim çerçevesi + gri tap-highlight kutusu) — dokunmatik SVG'nin varsayılan olarak seçilebilir/callout-açık bırakılması kaynaklı, tooltip'i okumayı zorlaştırıyordu.
+
+- **Kapsam taraması:** `grep -rl "from \"recharts\"" components/` ile **5 dosya** bulundu: `components/genel/CategoryBarChart.tsx`, `components/genel/CategoryPieChart.tsx`, `components/genel/CategoryRadarChart.tsx`, `components/istatistikler/CompareBarChart.tsx`, `components/istatistikler/CompareParetoChart.tsx`. Ayrı bir `ComparePieChart` dosyası yok (kullanıcının "varsa" dediği).
+- **`app/globals.css`:** Her dosyaya ayrı ayrı eklemek yerine (5 kat tekrar + gelecekte yeni bir grafik eklenirse unutulma riski), Recharts'ın **tüm** chart tiplerinde ortak kök sınıfı olan `.recharts-wrapper`'a (bkz. `node_modules/recharts/es6/chart/RechartsWrapper.js` — her `<ResponsiveContainer>` içeriği bu sınıfı taşır) tek bir CSS kuralı eklendi:
+  ```css
+  .recharts-wrapper,
+  .recharts-wrapper * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  ```
+  Bu, kod tekrarı olmadan mevcut 5 grafiği de kapsar ve ileride eklenecek herhangi bir Recharts grafiğini otomatik kapsar.
+- **Doğrulama notu (Chromium kısıtı):** `document.styleSheets` üzerinden `cssText` okununca `-webkit-touch-callout` ve `-webkit-user-select` görünmüyor — bu, Blink'in (Chromium'un render motoru) bu WebKit-özel property'leri hiç tanımamasından kaynaklanan bir CSSOM serileştirme durumu, gerçek bir hata değil. `.next/dev/static/chunks/app_globals_*.css`'in ham içeriği doğrudan okunarak 4 property'nin de sunulan CSS'te birebir mevcut olduğu doğrulandı — Safari bu dosyayı olduğu gibi alıp WebKit'e özel property'leri (aksine Chromium'un aksine) doğru şekilde uygulayacaktır.
+- **Tooltip regresyon testi:** Tarayıcıda `mouseover`/`mousemove` event'leri senkron olarak dispatch edilip her 5 grafiğin (CategoryBarChart, CategoryPieChart, CompareBarChart, CompareParetoChart test edildi; CategoryRadarChart seçili dönemde <3 kategori harcaması olduğundan bu testte render olmadı — kod değişikliği hepsini aynı şekilde kapsıyor) tooltip'inin hâlâ doğru açıldığı doğrulandı (`.recharts-tooltip-wrapper` `visibility: visible` + doğru metin).
+- **Sınırlama:** iOS'un asıl seçim/callout tetiklenme davranışı (mavi çerçeve) WebKit'e özgü olduğundan Browser pane'de (Chromium) doğrudan gözlemlenemedi — sadece CSS'in doğru üretildiği ve tooltip'in bozulmadığı doğrulanabildi. **Gerçek iPhone'da tekrar doğrulama gerekiyor.**
+
 ---
 
 ## 6. Build Sırası (Fazlar)

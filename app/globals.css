@@ -81,3 +81,21 @@ body {
     transform: scale(1);
   }
 }
+
+/* Recharts grafiklerinde (Genel Bakış + İstatistikler'deki tüm bar/pie/radar/
+   pareto grafikleri) iOS Safari, dokunmatik SVG'yi varsayılan olarak
+   "seçilebilir" bırakıyor — bir bara/noktaya dokunulduğunda tooltip'in
+   yanında mavi metin-seçim çerçevesi ve gri tap-highlight kutusu da
+   tetikleniyor, tooltip'i okumayı zorlaştırıyordu (bkz. Teknik Analiz Bölüm
+   5.11). Recharts'ın TÜM chart tiplerinde ortak kök sınıfı olan
+   .recharts-wrapper'a tek noktadan uygulanır — chart bazlı tekrar gerekmez,
+   yeni bir Recharts grafiği eklendiğinde otomatik kapsanır. Tooltip'in
+   kendisi bundan etkilenmez (ayrı bir mekanizma, hover/tap state'i üzerinden
+   çalışır — bkz. doğrulama notları). */
+.recharts-wrapper,
+.recharts-wrapper * {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
