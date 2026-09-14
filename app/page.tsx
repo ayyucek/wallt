@@ -68,10 +68,19 @@ function thisMonthStartStr(): string {
 // { message, details, hint, code } nesnesidir — bu yüzden err.message'a
 // instanceof Error kontrolü olmadan da erişebilmemiz gerekiyor.
 function errorMessage(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "object" && err !== null && "message" in err) {
-    return String((err as { message: unknown }).message);
+  if (typeof err === "object" && err !== null) {
+    const code = "code" in err ? String((err as { code: unknown }).code) : "";
+    const rawMessage = "message" in err ? String((err as { message: unknown }).message) : "";
+    // lib/storage.ts bu hatayı bir kez sessizce yeniden dener; buraya kadar
+    // geldiyse (retry de başarısız oldu) kullanıcıya ham "JWT issued at
+    // future..." metnini göstermek yerine anlaşılır bir Türkçe mesaj basıyoruz
+    // (bkz. Teknik Analiz Bölüm 5.9).
+    if (code === "PGRST303" || rawMessage.includes("JWT issued at future")) {
+      return "Cihazının saati yanlış görünüyor. Ayarlar'dan tarih/saati otomatik güncellemeyi aç ve tekrar dene.";
+    }
+    if (rawMessage) return rawMessage;
   }
+  if (err instanceof Error) return err.message;
   return "Veriler yüklenemedi.";
 }
 

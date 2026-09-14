@@ -411,6 +411,14 @@ Prototipte bu özellik hiç yoktu (`docs/WALLT_Prototype.jsx`'te delete/edit/swi
   - `BottomSheet`'in dış `title`'ı artık `editingTransaction`'a göre "Harcamayı Düzenle"/"Tasarrufu Düzenle"/"Harcama Ekle" arasında değişir.
   - Grafiklerin canlı güncellenmesi (bar/pie/pareto/radar/hero toplamı, kategori değişimi dahil) **zaten var olan mimarinin doğal sonucu** — `transactions` tek bir state dizisi, tüm grafik verileri bundan türeyen `useMemo`'lar; `setTransactions`'ı doğru güncellemek yeterli, `aggregate()`/`withSavingSegments()` her render'da `categoryId`'ye göre yeniden gruplar.
 
+### 5.9 JWT Clock-Skew (PGRST303) Retry (14 Eylül 2026)
+
+Tekrarlayan bir üretim hatası araştırıldı: bazı kullanıcılar (gerçek bir mobil cihaz dahil) veri yüklenirken "JWT issued at future UTC: ..." hatası alıyordu. Kök neden Supabase client kütüphanesinde değil — `@supabase/supabase-js`/`@supabase/ssr`'ın `iat` (issued-at) doğrulaması için hiçbir client-side tolerans/leeway ayarı yok. Hata, PostgREST'in kendi saatiyle token'ın `iat`'ı arasındaki anlık senkronizasyon farkından (`PGRST303`) kaynaklanıyor; bilinen bir PostgREST cache bug'ı (v16.1/v14.17'de düzeltildi) ya da gerçek cihaz saati sorunu olabilir. Kaynak: [supabase/discussions#48123](https://github.com/orgs/supabase/discussions/48123), [supabase/supabase#41294](https://github.com/supabase/supabase/issues/41294).
+
+- **`lib/storage.ts`:** `withClockSkewRetry()` sarmalayıcı eklendi — `fetchTransactions`/`fetchCategories` çağrısı `PGRST303` (veya mesajı "JWT issued at future" içeren) bir hatayla başarısız olursa, kullanıcıya hiçbir şey göstermeden ~1.5sn bekleyip **bir kez** sessizce tekrar dener; her iki denemede de `console.warn` ile not düşülür (ayrı bir logging altyapısı bu aşamada gereksiz görüldü). Retry de başarısız olursa orijinal hata olduğu gibi fırlatılır.
+- **`app/page.tsx`:** `errorMessage()`, retry tükenip hata `loadError`'a kadar ulaşırsa `PGRST303`/"JWT issued at future" imzasını tanıyıp ham İngilizce metin yerine anlaşılır bir Türkçe mesaj gösterir: *"Cihazının saati yanlış görünüyor. Ayarlar'dan tarih/saati otomatik güncellemeyi aç ve tekrar dene."* Diğer tüm hata tipleri eskisi gibi davranır (mesaj olduğu gibi gösterilir).
+- **`lib/storage.test.ts` (net-new):** Supabase client'ı mock'layıp retry davranışını 3 senaryoda doğrular — (1) ilk deneme `PGRST303`, ikinci deneme başarılı → veri döner, (2) her iki deneme de `PGRST303` → orijinal hata fırlatılır, (3) ilgisiz bir hata kodu → retry denenmeden direkt fırlatılır.
+
 ---
 
 ## 6. Build Sırası (Fazlar)
