@@ -26,6 +26,15 @@ function toDatetimeLocalValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+// Basamak ve en fazla bir nokta dışındaki karakterleri eler, ikinci noktayı
+// yok sayar (örn. "12.3.4" yazılırsa "12.34" olarak kalır).
+export function sanitizeAmountInput(raw: string): string {
+  const cleaned = raw.replace(/[^0-9.]/g, "");
+  const firstDot = cleaned.indexOf(".");
+  if (firstDot === -1) return cleaned;
+  return cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, "");
+}
+
 export default function AddExpenseSheet({
   categories,
   initialCategoryId,
@@ -147,11 +156,10 @@ export default function AddExpenseSheet({
           {isSaving ? "Tasarruf Edilen Tutar (₺)" : "Tutar (₺)"}
         </label>
         <input
-          type="number"
-          min="0"
-          step="0.01"
+          type="text"
+          inputMode="decimal"
           value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))}
           placeholder="0"
           className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
         />

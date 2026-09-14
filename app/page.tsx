@@ -380,7 +380,12 @@ export default function Home() {
                   <p className="mb-3 text-xs font-medium text-muted">
                     En çok harcanandan en aza sıralı — bir bara dokunarak o kategoriye harcama ekleyebilirsin
                   </p>
-                  <CategoryBarChart data={barData} onBarClick={openAddSheet} />
+                  {/* key: sheet açılışında bara dokunma hem sheet'i açıyor hem de
+                      Recharts'ın kendi tooltip/hover state'ini tetikliyor; sheet
+                      kapandığında bu state "takılı" kalabiliyordu (bkz. Teknik
+                      Analiz Bölüm 5.10) — addSheetOpen değiştiğinde chart'ı
+                      remount ederek tooltip'i garantili sıfırlıyoruz. */}
+                  <CategoryBarChart key={String(addSheetOpen)} data={barData} onBarClick={openAddSheet} />
                 </section>
               </div>
             )}
@@ -441,7 +446,7 @@ export default function Home() {
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
                   <h3 className="mb-1 text-sm font-bold text-ink">Kategoriye Göre Harcama</h3>
                   <p className="mb-3 text-xs font-medium text-muted">En çok harcanandan en aza sıralı</p>
-                  <CategoryBarChart data={grafiklerBarData} onBarClick={openAddSheet} />
+                  <CategoryBarChart key={String(addSheetOpen)} data={grafiklerBarData} onBarClick={openAddSheet} />
                 </section>
 
                 <section className="mb-4 rounded-card bg-card p-4 shadow-card">
