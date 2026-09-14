@@ -34,7 +34,7 @@ export default function DateRangeSheet({
             type="date"
             value={start}
             onChange={(e) => onStartChange(e.target.value)}
-            className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+            className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
           />
         </div>
         <div>
@@ -43,7 +43,7 @@ export default function DateRangeSheet({
             type="date"
             value={end}
             onChange={(e) => onEndChange(e.target.value)}
-            className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+            className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
           />
         </div>
       </div>

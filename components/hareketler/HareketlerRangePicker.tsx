@@ -26,13 +26,13 @@ export default function HareketlerRangePicker({
           type="date"
           value={start}
           onChange={(e) => onStartChange(e.target.value)}
-          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
         />
         <input
           type="date"
           value={end}
           onChange={(e) => onEndChange(e.target.value)}
-          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
         />
       </div>
       <div className="mt-2.5 flex flex-wrap gap-2">

@@ -36,13 +36,13 @@ export default function PeriodPicker({
           type="date"
           value={range.start}
           onChange={(e) => onStartChange(e.target.value)}
-          className="w-full rounded-xl bg-surface2 px-3 py-2 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2 text-base font-semibold text-ink outline-none"
         />
         <input
           type="date"
           value={range.end}
           onChange={(e) => onEndChange(e.target.value)}
-          className="w-full rounded-xl bg-surface2 px-3 py-2 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2 text-base font-semibold text-ink outline-none"
         />
       </div>
 

@@ -428,6 +428,18 @@ Gerçek bir iPhone'da iki belirti bildirildi: (1) Harcama Ekle sheet'i açıkken
 - **`components/sheets/AddExpenseSheet.tsx`:** Tutar input'u `type="number"` → `type="text" inputMode="decimal"`'e çevrildi. `type="number"`'ın iOS'taki native accessory'si (chevron up/down + Done), formdaki komşu `type="text"` alanlarıyla (Başlık) hızlı focus geçişlerinde karışabiliyor — bu, standart pratik olarak sayısal/ondalık alanlarda `inputMode` kullanılmasının (native `number` type yerine) önerilme sebeplerinden biri. Native karakter filtrelemesinin yerini yeni `sanitizeAmountInput()` (yalnızca rakam + en fazla bir nokta) alıyor; `components/sheets/AddExpenseSheet.test.ts` (net-new) bunu 4 senaryoda doğruluyor.
 - **Sınırlama:** iOS'un native klavye accessory çakışması (belirti 1) gerçek WebKit'e özgü bir davranış olduğundan Browser pane (Chromium tabanlı) içinde birebir yeniden üretilemedi/görsel olarak doğrulanamadı — `type="number"`'ı kaldırmak bilinen standart çözüm olduğundan uygulandı, ancak gerçek cihazda son doğrulama kullanıcıdan bekleniyor.
 
+**14 Eylül 2026, 2. revizyon — gerçek kök neden:** Yukarıdaki 3 düzeltme belirtileri gidermedi. Kullanıcı asıl davranışı netleştirdi: input'a dokununca sayfa o alana zoom yapıyor ve bu zoom kalıcı kalıyor. Bu, iOS Safari'nin bilinen bir davranışı — **font-size'ı 16px'in altında olan bir input focus olduğunda Safari otomatik zoom yapar**, ve çıkışta bu zoom'u güvenilir şekilde geri almaz. Uygulamadaki **tüm** form input/textarea'ları `text-sm` (14px, Tailwind varsayılanı) kullanıyordu — proje `html`'de özel bir `font-size` override'ı olmadığından `rem` tabanlı bu değer gerçekten 14px'e karşılık geliyordu, 16px eşiğinin altında.
+
+- Aşağıdaki **13 input/textarea**'nın tümü `text-sm` → `text-base` (16px) yapıldı — sadece input/textarea elemanlarının kendisi değiştirildi, çevresindeki label/buton/paragraf metinleri (`text-xs`/`text-sm`) olduğu gibi bırakıldı:
+  - `components/sheets/AddExpenseSheet.tsx`: Başlık, Açıklama (textarea), Tutar, Tarih ve Saat, Kategori adı (5 input)
+  - `components/sheets/DateRangeSheet.tsx`: Başlangıç, Bitiş (2 input)
+  - `components/istatistikler/PeriodPicker.tsx`: Dönem A/B başlangıç-bitiş (2 input, Dönem başına)
+  - `components/hareketler/HareketlerRangePicker.tsx`: Başlangıç, Bitiş (2 input)
+  - `components/auth/AuthForm.tsx`: E-posta, Şifre (2 input)
+  - `components/auth/ResetPasswordForm.tsx`: Yeni Şifre, Yeni Şifre (Tekrar) (2 input — not: toplam sayım 13, RangePicker'lar dahil)
+- **Viewport meta:** `app/layout.tsx`'teki `viewport` export'unda `maximum-scale`/`user-scalable` gibi bir kısıtlama hiç yoktu ve font-size düzeltmesi tek başına yeterli olduğundan eklenmedi — erişilebilirlik açısından kullanıcının sayfayı elle zoom'lama (pinch-zoom) yeteneği kısıtlanmadı.
+- **Doğrulama:** Gerçek cihaz erişimi olmadığından, düzeltme render edilmiş DOM'dan `getComputedStyle(el).fontSize` okunarak doğrulandı — giriş formu, AddExpenseSheet'in 5 input'u (Yeni Kategori dahil), DateRangeSheet, HareketlerRangePicker ve PeriodPicker'ın (4 input, Dönem A+B) tümünde `16px` ölçüldü. iOS'un zoom-on-focus davranışının kendisi (WebKit'e özgü) Browser pane'de test edilemez — **bu değişikliğin gerçek etkisini gerçek iPhone'da yeniden doğrulaman gerekiyor.**
+
 ---
 
 ## 6. Build Sırası (Fazlar)

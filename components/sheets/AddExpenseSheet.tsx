@@ -136,7 +136,7 @@ export default function AddExpenseSheet({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={isSaving ? "örn. Kahve almadım" : "örn. Öğle yemeği"}
-          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
         />
       </div>
 
@@ -147,7 +147,7 @@ export default function AddExpenseSheet({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Ek not..."
           rows={2}
-          className="w-full resize-y rounded-xl bg-surface2 px-3 py-2.5 text-sm font-medium text-ink outline-none"
+          className="w-full resize-y rounded-xl bg-surface2 px-3 py-2.5 text-base font-medium text-ink outline-none"
         />
       </div>
 
@@ -161,7 +161,7 @@ export default function AddExpenseSheet({
           value={amount}
           onChange={(e) => setAmount(sanitizeAmountInput(e.target.value))}
           placeholder="0"
-          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
         />
       </div>
 
@@ -171,7 +171,7 @@ export default function AddExpenseSheet({
           type="datetime-local"
           value={dateTimeValue}
           onChange={(e) => setDateTimeValue(e.target.value)}
-          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-sm font-semibold text-ink outline-none"
+          className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
         />
         <p className="mt-1.5 text-xs font-medium text-muted">
           Varsayılan olarak şu an dolu gelir, istersen değiştirebilirsin.
@@ -215,7 +215,7 @@ export default function AddExpenseSheet({
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               placeholder="Kategori adı"
-              className="flex-1 rounded-xl bg-surface2 px-3 py-2 text-sm font-semibold text-ink outline-none"
+              className="flex-1 rounded-xl bg-surface2 px-3 py-2 text-base font-semibold text-ink outline-none"
             />
             <button
               type="button"
