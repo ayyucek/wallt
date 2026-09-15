@@ -35,6 +35,7 @@ import {
   periodGranularity,
   diffPercent,
   filterByRange,
+  getFrequentExpenses,
   isExpense,
   isSaving,
   quickRange,
@@ -160,6 +161,11 @@ export default function Home() {
     const setter = which === "A" ? setPeriodA : setPeriodB;
     setter((prev) => ({ ...prev, end: value, label: "Özel" }));
   }
+
+  // Sık Kullanılanlar şeridi (PRD 5.1.2) — seçili tarih aralığından bağımsız,
+  // tüm geçmişten hesaplanır: "sık kullanılan" kavramı o an filtrelenmiş
+  // döneme değil, kullanıcının genel alışkanlığına bakmalı.
+  const frequentExpenses = useMemo(() => getFrequentExpenses(transactions), [transactions]);
 
   const filtered = useMemo(
     () => filterByRange(transactions, rangeStart, rangeEnd),
@@ -544,6 +550,7 @@ export default function Home() {
           categories={categories}
           initialCategoryId={initialAddCategoryId}
           editingTransaction={editingTransaction}
+          frequentExpenses={frequentExpenses}
           onSubmit={handleSubmitTransaction}
           onAddCategory={handleAddCategory}
           onClose={() => setAddSheetOpen(false)}

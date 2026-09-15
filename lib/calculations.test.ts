@@ -6,6 +6,7 @@ import {
   compareParetoData,
   diffPercent,
   filterByRange,
+  getFrequentExpenses,
   granularityLabel,
   isExpense,
   isSaving,
@@ -347,5 +348,91 @@ describe("buildCumulativeDateMap", () => {
   it("dönemde harcama yoksa boş string döner", () => {
     const at = buildCumulativeDateMap([], "2026-01-01", "2026-01-10");
     expect(at(50)).toBe("");
+  });
+});
+
+describe("getFrequentExpenses", () => {
+  it("en az 2 tekrarı olan kombinasyonları count'a göre azalan sırada döner", () => {
+    const txs = [
+      tx({ title: "Öğle Yemeği", amount: 100, categoryId: "yemek" }),
+      tx({ title: "Öğle Yemeği", amount: 120, categoryId: "yemek" }),
+      tx({ title: "Öğle Yemeği", amount: 110, categoryId: "yemek" }),
+      tx({ title: "Otobüs", amount: 20, categoryId: "ulasim" }),
+      tx({ title: "Otobüs", amount: 20, categoryId: "ulasim" }),
+    ];
+    const result = getFrequentExpenses(txs);
+    expect(result.map((e) => e.title)).toEqual(["Öğle Yemeği", "Otobüs"]);
+    expect(result[0].count).toBe(3);
+    expect(result[1].count).toBe(2);
+  });
+
+  it("tutarı anahtara katmaz — farklı tutarlarla girilen aynı başlık+kategori tek grup sayılır", () => {
+    const txs = [
+      tx({ title: "Market", amount: 80, categoryId: "market" }),
+      tx({ title: "Market", amount: 95, categoryId: "market" }),
+    ];
+    const result = getFrequentExpenses(txs);
+    expect(result).toHaveLength(1);
+    expect(result[0].count).toBe(2);
+  });
+
+  it("gösterilen tutar, grup içindeki en son tarihli kaydın tutarıdır", () => {
+    const txs = [
+      tx({ title: "Market", amount: 80, categoryId: "market", timestamp: "2026-09-01T10:00:00.000Z" }),
+      tx({ title: "Market", amount: 95, categoryId: "market", timestamp: "2026-09-10T10:00:00.000Z" }),
+      tx({ title: "Market", amount: 60, categoryId: "market", timestamp: "2026-09-05T10:00:00.000Z" }),
+    ];
+    const result = getFrequentExpenses(txs);
+    expect(result[0].amount).toBe(95);
+  });
+
+  // Gerçek cihaz/browser testinde bulunan bir edge case: datetime-local input
+  // dakika hassasiyetinde olduğundan aynı dakika içinde art arda eklenen iki
+  // kayıt birebir aynı ISO timestamp'e sahip olabilir. Bu durumda dizide
+  // SONRA gelen (daha yeni eklenen) kaydın tutarı kazanmalı.
+  it("timestamp'ler birebir eşitse, dizide sonra gelen kayıt kazanır", () => {
+    const txs = [
+      tx({ title: "Kahve", amount: 25, categoryId: "yemek", timestamp: "2026-09-15T16:26:00.000Z" }),
+      tx({ title: "Kahve", amount: 30, categoryId: "yemek", timestamp: "2026-09-15T16:26:00.000Z" }),
+    ];
+    const result = getFrequentExpenses(txs);
+    expect(result[0].amount).toBe(30);
+  });
+
+  it("başlığı trim+lowercase normalize eder (\"Yemek\" ile \"yemek \" aynı gruba girer)", () => {
+    const txs = [
+      tx({ title: "Kahve", categoryId: "yemek" }),
+      tx({ title: "kahve ", categoryId: "yemek" }),
+    ];
+    const result = getFrequentExpenses(txs);
+    expect(result).toHaveLength(1);
+    expect(result[0].count).toBe(2);
+  });
+
+  it("aynı başlık farklı kategoride ayrı grup sayılır", () => {
+    const txs = [
+      tx({ title: "Hediye", categoryId: "yemek" }),
+      tx({ title: "Hediye", categoryId: "yemek" }),
+      tx({ title: "Hediye", categoryId: "market" }),
+      tx({ title: "Hediye", categoryId: "market" }),
+    ];
+    const result = getFrequentExpenses(txs);
+    expect(result).toHaveLength(2);
+  });
+
+  it("tek seferlik (tekrarsız) kombinasyonları eler", () => {
+    const txs = [tx({ title: "Tek Seferlik", amount: 500 })];
+    expect(getFrequentExpenses(txs)).toEqual([]);
+  });
+
+  it("veri yokken boş dizi döner", () => {
+    expect(getFrequentExpenses([])).toEqual([]);
+  });
+
+  it("limit parametresine uyar", () => {
+    const titles = ["A", "B", "C", "D", "E", "F"];
+    const txs = titles.flatMap((title) => [tx({ title }), tx({ title })]);
+    expect(getFrequentExpenses(txs, 3)).toHaveLength(3);
+    expect(getFrequentExpenses(txs)).toHaveLength(5);
   });
 });

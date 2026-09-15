@@ -56,3 +56,14 @@ export interface CompareParetoEntry extends Category {
   cumPctA: number;
   cumPctB: number;
 }
+
+// Harcama Ekle sheet'indeki "Sık Kullanılanlar" şeridi (PRD 5.1.2). `amount`,
+// bu title+categoryId kombinasyonundaki en son tarihli kaydın tutarıdır —
+// bkz. getFrequentExpenses (lib/calculations.ts).
+export interface FrequentExpense {
+  title: string;
+  amount: number;
+  categoryId: string;
+  type: TransactionType;
+  count: number;
+}

@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { Check, Plus, X } from "lucide-react";
-import type { Category, Transaction, TransactionType } from "@/lib/types";
+import type { Category, FrequentExpense, Transaction, TransactionType } from "@/lib/types";
+import FrequentChips from "./FrequentChips";
 
 interface AddExpenseSheetProps {
   categories: Category[];
@@ -13,6 +14,9 @@ interface AddExpenseSheetProps {
   // BottomSheet.tsx — kapalıyken child unmount olur), ayrı bir reset
   // efektine gerek kalmadan initial state doğrudan bundan okunabilir.
   editingTransaction?: Transaction;
+  // Sık Kullanılanlar şeridi (15 Eylül 2026 eklentisi, PRD 5.1.2) — yalnızca
+  // ekleme modunda (editingTransaction yokken) gösterilir.
+  frequentExpenses?: FrequentExpense[];
   onSubmit: (input: Omit<Transaction, "id">) => Promise<void>;
   onAddCategory: (name: string) => Promise<Category>;
   onClose: () => void;
@@ -39,6 +43,7 @@ export default function AddExpenseSheet({
   categories,
   initialCategoryId,
   editingTransaction,
+  frequentExpenses,
   onSubmit,
   onAddCategory,
   onClose,
@@ -63,6 +68,16 @@ export default function AddExpenseSheet({
   const isSaving = entryType === "saving";
   const parsedAmount = parseFloat(amount);
   const canSubmit = Boolean(amount) && parsedAmount > 0 && title.trim() !== "" && dateTimeValue;
+
+  // Chip'e dokununca başlık/tutar/kategori/tip formu doldurur — tarih HİÇ
+  // dokunulmaz, her zaman "şu an" kalır (bkz. PRD 5.1.2). Alanlar normal
+  // controlled input olduğundan kullanıcı dilediğini serbestçe değiştirebilir.
+  function handleSelectFrequent(expense: FrequentExpense) {
+    setEntryType(expense.type);
+    setTitle(expense.title);
+    setAmount(String(expense.amount));
+    setSelectedCategoryId(expense.categoryId);
+  }
 
   async function handleAddCategory() {
     const name = newCategoryName.trim();
@@ -100,6 +115,10 @@ export default function AddExpenseSheet({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {!editingTransaction && (
+        <FrequentChips expenses={frequentExpenses ?? []} categories={categories} onSelect={handleSelectFrequent} />
+      )}
+
       <div className="flex rounded-pill bg-surface2 p-1">
         <button
           type="button"

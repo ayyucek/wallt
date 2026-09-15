@@ -66,6 +66,16 @@ Son Hareketler listesindeki **her satır dokunulabilir**. Dokununca, o kaydın b
 - Düzenleme/silme, harcama ve tasarruf kayıtları için **birebir aynı şekilde** çalışır — özel bir dallanma yoktur.
 - Bir kayıt düzenlenip/silinince, ona bağlı tüm grafikler (bar, pie, pareto, radar, hero toplamı, Grafikler/İstatistikler sekmeleri) **anında** güncellenir — bu, kayıtların tek bir merkezi state'ten türetilmesinin doğal bir sonucudur, özel bir senkronizasyon kodu gerekmez.
 
+### 5.1.2 Sık Kullanılanlar Şeridi (15 Eylül 2026 eklentisi)
+
+Harcama Ekle sheet'i açıldığında, form alanlarının **üstünde** yatay kaydırmalı bir "chip" şeridi gösterilir. Bu şerit, kullanıcının geçmiş harcamalarından **en sık tekrar edenlerini** (başlık + tutar + kategori kombinasyonu bazında, en fazla 5 tanesi) listeler — sık girilen "Öğle yemeği ₺150 Yemek" gibi rutin harcamaların tekrar tekrar elle yazılmasını önlemek amacıyla.
+
+- Bir chip'e dokunulduğunda, o harcamanın **başlığı, tutarı ve kategorisi** forma otomatik doldurulur. **Tarih her zaman "şu an" kalır** — chip'ten doldurma geçmişe dönük bir tarih taşımaz, kullanıcı isterse tarihi ayrıca elle değiştirebilir.
+- Doldurulan alanlar **normal, düzenlenebilir** form alanlarıdır — kullanıcı chip'e dokunduktan sonra herhangi bir alanı değiştirebilir, hiçbir şeyi değiştirmeden de doğrudan kaydedebilir.
+- Kullanıcının yeterli geçmişi yoksa (çok az farklı harcama kombinasyonu varsa) şerit **hiç gösterilmez** — boş veya anlamsız bir şerit yerine sheet'in sade hâli tercih edilir.
+- Bu şerit yalnızca **yeni harcama eklerken** gösterilir; düzenleme modunda (bkz. 5.1.1) form zaten seçili kaydın değerleriyle dolu geldiğinden şeride gerek yoktur.
+- Tasarruf girişlerinde de aynı mantık geçerlidir — sık tekrar eden tasarruf girişleri de şeritte görünebilir.
+
 ### 5.2 Kategori Yönetimi
 
 - **Hybrid model**: Önceden tanımlı sabit kategori seti (Yemek, Ulaşım, Eğlence, Market, Fatura, Sağlık, Diğer) sağlanır

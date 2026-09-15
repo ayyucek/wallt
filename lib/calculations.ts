@@ -4,6 +4,7 @@ import type {
   CompareBarEntry,
   CompareParetoEntry,
   DateRange,
+  FrequentExpense,
   ParetoEntry,
   RadarEntry,
   Transaction,
@@ -99,6 +100,54 @@ export function withSavingSegments(
     const saving = savingsAgg.find((s) => s.id === c.id)?.total ?? 0;
     return saving > 0 ? { ...c, savingSegment: saving } : c;
   });
+}
+
+// Harcama Ekle sheet'indeki "Sık Kullanılanlar" şeridi (PRD 5.1.2). Anahtar
+// type|başlık(trim+lowercase)|categoryId'dir — tutar anahtara DAHİL DEĞİL,
+// çünkü aynı başlık+kategori her seferinde biraz farklı bir tutarla
+// girilebilir (örn. "Market"); tutarı anahtara katmak bu doğal varyasyonu
+// hiçbiri tek başına "sık" eşiğine ulaşamayan ayrı kombinasyonlara bölerdi.
+// Dönen `amount`, o grup içindeki en son tarihli (timestamp'i en büyük)
+// kaydın tutarıdır — kullanıcının en güncel harcama miktarını yansıtır.
+// count >= 2 filtresi "sık" tanımını tek seferlik bir harcamayı kapsamayacak
+// şekilde sağlar; az veri varsa boş dizi döner, UI şeridi göstermez.
+//
+// Timestamp EŞİTLİĞİ (>=, > değil): `timestamp` alanı bir `datetime-local`
+// input'undan gelir ve dakika hassasiyetindedir — aynı dakika içinde art
+// arda eklenen iki kayıt birebir aynı ISO string'e sahip olabilir. `>`
+// (strict) kullanılsaydı eşitlik durumunda İLK karşılaşılan kayıt kazanırdı;
+// `>=` ile SONRAKİ karşılaşılan (eşit veya daha yeni) kayıt kazanır. Bu,
+// çağıranın transactions'ı insertion-order + stabil sort ile tuttuğu
+// (bkz. page.tsx sortByTimestampDesc) gerçek kullanımda "aynı dakikada
+// girilen ikinci kayıt, birincinin üzerine yazar" davranışını doğru verir.
+export function getFrequentExpenses(transactions: Transaction[], limit = 5): FrequentExpense[] {
+  const map = new Map<string, FrequentExpense & { lastTimestamp: string }>();
+  transactions.forEach((t) => {
+    const key = `${t.type}|${t.title.trim().toLowerCase()}|${t.categoryId}`;
+    const existing = map.get(key);
+    if (existing) {
+      existing.count += 1;
+      if (t.timestamp >= existing.lastTimestamp) {
+        existing.lastTimestamp = t.timestamp;
+        existing.amount = t.amount;
+        existing.title = t.title.trim();
+      }
+    } else {
+      map.set(key, {
+        title: t.title.trim(),
+        amount: t.amount,
+        categoryId: t.categoryId,
+        type: t.type,
+        count: 1,
+        lastTimestamp: t.timestamp,
+      });
+    }
+  });
+  return Array.from(map.values())
+    .filter((e) => e.count >= 2)
+    .sort((a, b) => b.count - a.count || (a.lastTimestamp < b.lastTimestamp ? 1 : -1))
+    .slice(0, limit)
+    .map((e) => ({ title: e.title, amount: e.amount, categoryId: e.categoryId, type: e.type, count: e.count }));
 }
 
 export type QuickRangeKey = "week" | "lastweek" | "month" | "lastmonth";
