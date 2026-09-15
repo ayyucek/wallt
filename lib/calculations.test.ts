@@ -7,6 +7,7 @@ import {
   diffPercent,
   filterByRange,
   getFrequentExpenses,
+  getTopCategoriesByUsage,
   granularityLabel,
   isExpense,
   isSaving,
@@ -434,5 +435,58 @@ describe("getFrequentExpenses", () => {
     const txs = titles.flatMap((title) => [tx({ title }), tx({ title })]);
     expect(getFrequentExpenses(txs, 3)).toHaveLength(3);
     expect(getFrequentExpenses(txs)).toHaveLength(5);
+  });
+});
+
+describe("getTopCategoriesByUsage", () => {
+  it("işlem sayısına göre azalan sırada ilk `limit` kategoriyi döner", () => {
+    const txs = [
+      tx({ categoryId: "market" }),
+      tx({ categoryId: "market" }),
+      tx({ categoryId: "market" }),
+      tx({ categoryId: "yemek" }),
+      tx({ categoryId: "yemek" }),
+      tx({ categoryId: "ulasim" }),
+    ];
+    const result = getTopCategoriesByUsage(txs, "expense");
+    expect(result.map((c) => c.categoryId)).toEqual(["market", "yemek", "ulasim"]);
+    expect(result[0].count).toBe(3);
+  });
+
+  it("sadece verilen type'a ait transaction'ları sayar", () => {
+    const txs = [
+      tx({ categoryId: "market", type: "expense" }),
+      tx({ categoryId: "market", type: "expense" }),
+      tx({ categoryId: "saglik", type: "saving" }),
+      tx({ categoryId: "saglik", type: "saving" }),
+      tx({ categoryId: "saglik", type: "saving" }),
+    ];
+    const expenseResult = getTopCategoriesByUsage(txs, "expense");
+    const savingResult = getTopCategoriesByUsage(txs, "saving");
+    expect(expenseResult).toEqual([{ categoryId: "market", count: 2 }]);
+    expect(savingResult).toEqual([{ categoryId: "saglik", count: 3 }]);
+  });
+
+  it("eşit sayıda kullanılan kategorilerde en son kullanılan öne alınır", () => {
+    const txs = [
+      tx({ categoryId: "market", timestamp: "2026-09-01T10:00:00.000Z" }),
+      tx({ categoryId: "market", timestamp: "2026-09-01T11:00:00.000Z" }),
+      tx({ categoryId: "yemek", timestamp: "2026-09-10T10:00:00.000Z" }),
+      tx({ categoryId: "yemek", timestamp: "2026-09-10T11:00:00.000Z" }),
+    ];
+    // İkisi de 2'şer kez kullanılmış (eşit count); "yemek"in son kullanımı
+    // (9-10) "market"inkinden (9-01) daha yeni, o yüzden önce gelmeli.
+    const result = getTopCategoriesByUsage(txs, "expense");
+    expect(result.map((c) => c.categoryId)).toEqual(["yemek", "market"]);
+  });
+
+  it("limit parametresine uyar", () => {
+    const txs = ["a", "b", "c", "d", "e"].flatMap((categoryId) => [tx({ categoryId }), tx({ categoryId })]);
+    expect(getTopCategoriesByUsage(txs, "expense", 2)).toHaveLength(2);
+    expect(getTopCategoriesByUsage(txs, "expense")).toHaveLength(3);
+  });
+
+  it("veri yokken boş dizi döner", () => {
+    expect(getTopCategoriesByUsage([], "expense")).toEqual([]);
   });
 });

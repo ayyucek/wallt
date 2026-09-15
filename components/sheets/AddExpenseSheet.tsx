@@ -15,8 +15,11 @@ interface AddExpenseSheetProps {
   // efektine gerek kalmadan initial state doğrudan bundan okunabilir.
   editingTransaction?: Transaction;
   // Sık Kullanılanlar şeridi (15 Eylül 2026 eklentisi, PRD 5.1.2) — yalnızca
-  // ekleme modunda (editingTransaction yokken) gösterilir.
-  frequentExpenses?: FrequentExpense[];
+  // ekleme modunda (editingTransaction yokken) gösterilir. Harcama/Tasarruf
+  // için ayrı ayrı hesaplanmış (top-3 kategori kısıtlı) listeler page.tsx'ten
+  // gelir; hangisinin gösterileceğine bu bileşen kendi entryType state'ine
+  // göre karar verir (2. revizyon).
+  frequentExpensesByType?: Record<TransactionType, FrequentExpense[]>;
   onSubmit: (input: Omit<Transaction, "id">) => Promise<void>;
   onAddCategory: (name: string) => Promise<Category>;
   onClose: () => void;
@@ -43,7 +46,7 @@ export default function AddExpenseSheet({
   categories,
   initialCategoryId,
   editingTransaction,
-  frequentExpenses,
+  frequentExpensesByType,
   onSubmit,
   onAddCategory,
   onClose,
@@ -115,10 +118,6 @@ export default function AddExpenseSheet({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-      {!editingTransaction && (
-        <FrequentChips expenses={frequentExpenses ?? []} categories={categories} onSelect={handleSelectFrequent} />
-      )}
-
       <div className="flex rounded-pill bg-surface2 p-1">
         <button
           type="button"
@@ -141,6 +140,14 @@ export default function AddExpenseSheet({
           Tasarruf
         </button>
       </div>
+
+      {!editingTransaction && (
+        <FrequentChips
+          expenses={frequentExpensesByType?.[entryType] ?? []}
+          categories={categories}
+          onSelect={handleSelectFrequent}
+        />
+      )}
 
       {isSaving && (
         <p className="text-xs font-medium text-muted">

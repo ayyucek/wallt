@@ -1,6 +1,7 @@
 import type {
   Category,
   CategoryTotal,
+  CategoryUsage,
   CompareBarEntry,
   CompareParetoEntry,
   DateRange,
@@ -8,6 +9,7 @@ import type {
   ParetoEntry,
   RadarEntry,
   Transaction,
+  TransactionType,
 } from "./types";
 
 export function isExpense(t: Transaction): boolean {
@@ -148,6 +150,35 @@ export function getFrequentExpenses(transactions: Transaction[], limit = 5): Fre
     .sort((a, b) => b.count - a.count || (a.lastTimestamp < b.lastTimestamp ? 1 : -1))
     .slice(0, limit)
     .map((e) => ({ title: e.title, amount: e.amount, categoryId: e.categoryId, type: e.type, count: e.count }));
+}
+
+// Sık Kullanılanlar şeridinin top-3 kategori kısıtı (15 Eylül 2026, 2.
+// revizyon, PRD 5.1.2) — şerit, seçili type için en çok işlem yapılan ilk
+// `limit` kategoriye ait kombinasyonlarla sınırlanır. Harcama ve Tasarruf
+// için AYRI çağrılmalıdır (page.tsx bunu her iki type için ayrı ayrı yapar) —
+// bu iki kategori sıralaması tamamen bağımsızdır. Eşitlik durumunda
+// (count eşitse), getFrequentExpenses'teki tie-break ile TUTARLI olacak
+// şekilde en son kullanılan kategori öne alınır.
+export function getTopCategoriesByUsage(
+  transactions: Transaction[],
+  type: TransactionType,
+  limit = 3
+): CategoryUsage[] {
+  const map = new Map<string, { count: number; lastTimestamp: string }>();
+  transactions.forEach((t) => {
+    if (t.type !== type) return;
+    const existing = map.get(t.categoryId);
+    if (existing) {
+      existing.count += 1;
+      if (t.timestamp > existing.lastTimestamp) existing.lastTimestamp = t.timestamp;
+    } else {
+      map.set(t.categoryId, { count: 1, lastTimestamp: t.timestamp });
+    }
+  });
+  return Array.from(map.entries())
+    .sort(([, a], [, b]) => b.count - a.count || (a.lastTimestamp < b.lastTimestamp ? 1 : -1))
+    .slice(0, limit)
+    .map(([categoryId, v]) => ({ categoryId, count: v.count }));
 }
 
 export type QuickRangeKey = "week" | "lastweek" | "month" | "lastmonth";

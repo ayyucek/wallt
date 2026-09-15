@@ -36,6 +36,7 @@ import {
   diffPercent,
   filterByRange,
   getFrequentExpenses,
+  getTopCategoriesByUsage,
   isExpense,
   isSaving,
   quickRange,
@@ -53,7 +54,7 @@ import {
   updateTransaction,
 } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, DateRange, Transaction } from "@/lib/types";
+import type { Category, DateRange, FrequentExpense, Transaction, TransactionType } from "@/lib/types";
 
 function todayStr(): string {
   const d = new Date();
@@ -164,8 +165,20 @@ export default function Home() {
 
   // Sık Kullanılanlar şeridi (PRD 5.1.2) — seçili tarih aralığından bağımsız,
   // tüm geçmişten hesaplanır: "sık kullanılan" kavramı o an filtrelenmiş
-  // döneme değil, kullanıcının genel alışkanlığına bakmalı.
-  const frequentExpenses = useMemo(() => getFrequentExpenses(transactions), [transactions]);
+  // döneme değil, kullanıcının genel alışkanlığına bakmalı. Harcama ve
+  // Tasarruf için AYRI hesaplanır (15 Eylül 2026, 2. revizyon) — her type'ın
+  // kendi top-3 kategorisiyle sınırlı bir liste elde eder; AddExpenseSheet
+  // kendi entryType state'ine göre bunlardan doğru olanı seçer.
+  const frequentExpensesByType = useMemo(() => {
+    const result: Record<TransactionType, FrequentExpense[]> = { expense: [], saving: [] };
+    (["expense", "saving"] as TransactionType[]).forEach((type) => {
+      const topCategoryIds = new Set(getTopCategoriesByUsage(transactions, type).map((c) => c.categoryId));
+      result[type] = getFrequentExpenses(transactions.filter((t) => t.type === type)).filter((e) =>
+        topCategoryIds.has(e.categoryId)
+      );
+    });
+    return result;
+  }, [transactions]);
 
   const filtered = useMemo(
     () => filterByRange(transactions, rangeStart, rangeEnd),
@@ -550,7 +563,7 @@ export default function Home() {
           categories={categories}
           initialCategoryId={initialAddCategoryId}
           editingTransaction={editingTransaction}
-          frequentExpenses={frequentExpenses}
+          frequentExpensesByType={frequentExpensesByType}
           onSubmit={handleSubmitTransaction}
           onAddCategory={handleAddCategory}
           onClose={() => setAddSheetOpen(false)}

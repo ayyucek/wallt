@@ -475,6 +475,22 @@ Bkz. PRD Bölüm 5.1.2. Amaç: sık tekrar eden harcamaların (aynı başlık+tu
 - **`components/sheets/AddExpenseSheet.tsx`:** Yeni `frequentExpenses?: FrequentExpense[]` prop'u. Sadece **ekleme modunda** (`editingTransaction` yokken) form alanlarının üstünde `<FrequentChips>` render edilir — düzenleme modunda form zaten dolu geldiğinden gösterilmez (bkz. PRD 5.1.2). Bir chip'e dokununca `title`/`amount`/`categoryId`/`entryType` state'leri o chip'in değerleriyle set edilir; `dateTimeValue` **dokunulmaz** (her zaman "şu an" kalır — chip'ten doldurma tarih taşımaz). Doldurulan alanlar normal controlled input'lar olduğundan kullanıcı istediği alanı serbestçe değiştirebilir.
 - **`app/page.tsx`:** `getFrequentExpenses(transactions)` çağrısı `useMemo` ile hesaplanır (tüm transactions üzerinden — belirli bir zaman aralığıyla sınırlı değil, çünkü "sık kullanılan" kavramı seçili dönem filtresinden bağımsız olmalı), `AddExpenseSheet`'e `frequentExpenses` prop'u olarak geçirilir.
 
+**15 Eylül 2026, 2. revizyon — Harcama/Tasarruf tipine ve top-3 kategoriye göre filtreleme:**
+
+1. **Sıralama:** `AddExpenseSheet`'te Harcama/Tasarruf toggle'ı artık `<FrequentChips>`'in **üstünde** — kullanıcı önce hangi tip girdi yapacağını seçer, sonra o tipe uygun şerit görünür (önceki sıralamada şerit toggle'dan önce geliyordu, bu da "hangi tipin şeridine bakıyorum" belirsizliği yaratıyordu).
+2. **Tipe göre otomatik güncelleme:** `getFrequentExpenses` zaten `type`'ı gruplama anahtarına dahil ediyordu (bkz. yukarı), ama önceden `page.tsx` TEK bir liste (tüm type'lar karışık) hesaplayıp geçiriyordu. Artık `page.tsx`, her iki type için AYRI birer liste hesaplar (`frequentExpensesByType: Record<TransactionType, FrequentExpense[]>`); `AddExpenseSheet`, kendi local `entryType` state'ine göre `frequentExpensesByType[entryType]`'ı `<FrequentChips>`'e geçirir. Kullanıcı toggle'ı değiştirdiğinde prop değişir, şerit otomatik yeniden render olur — `FrequentChips`'in kendisinde `type`'a özel bir mantık gerekmez, o hâlâ sadece "verilen listeyi göster" işini yapar.
+3. **Top-3 kategori kısıtı:** Şerit artık seçili type'a ait TÜM sık kombinasyonları değil, sadece o type için **en çok işlem yapılan ilk 3 kategoriye** ait kombinasyonları gösterir — 4. sıradaki ve sonrası kategoriler, o kategoride ne kadar tekrarlanan kombinasyon olursa olsun hiç gösterilmez. Yeni saf fonksiyon:
+   ```ts
+   export function getTopCategoriesByUsage(
+     transactions: Transaction[],
+     type: TransactionType,
+     limit = 3
+   ): CategoryUsage[]
+   ```
+   `transactions`'ı `type`'a göre filtreler, `categoryId` bazında işlem sayısını sayar, `count`'a göre azalan sırada (eşitlikte en son kullanılan kategori öne alınır — `getFrequentExpenses`'teki tie-break ile **tutarlı**, aynı "en büyük timestamp kazanır" mantığı) ilk `limit` kategoriyi döner. **Harcama ve Tasarruf için ayrı ayrı** çağrılır — örn. Harcama'da en çok "Market" kullanılıyorken Tasarruf'ta en çok "Sağlık" kullanılıyor olabilir, ikisinin top-3 listesi tamamen bağımsızdır.
+   - Yeni dönüş tipi (`lib/types.ts`): `CategoryUsage { categoryId, count }`.
+   - `page.tsx`'teki `frequentExpensesByType` hesaplaması: her `type` için önce `getTopCategoriesByUsage(transactions, type)` ile top-3 `categoryId` kümesi çıkarılır, sonra `getFrequentExpenses(transactions.filter(t => t.type === type))` sonucu bu kümeyle filtrelenir. Bu birleştirme `page.tsx`'te yapılır — `getFrequentExpenses`'in kendisi top-3 kısıtından habersiz kalır, tek başına da (örn. ileride farklı bir bağlamda) kullanılabilir durumda kalır.
+
 **6 numaralı bölüme not:** Faz 4 (Harcama Ekle akışı) tamamlandıktan sonraki bir ek mini-faz olarak ele alınır — yeni bir Faz numarası açmaz, çünkü tamamlanmış bir akışa (form + validasyon + state ekleme) üstüne eklenen, akışı değiştirmeyen bir iyileştirmedir. Bağımlılığı: `transactions` state'i zaten var olmalı (Faz 8, gerçek veri).
 
 **Yan bulgu — `vitest.config.mts` (net-new):** `FrequentChips.tsx`'in `@/lib/categories`'den gerçek bir değer (`SAVING_COLOR`) import etmesiyle, projede daha önce hiç fark edilmemiş bir test altyapısı boşluğu ortaya çıktı: `tsconfig.json`'daki `"@/*"` path alias'ı sadece TypeScript'in tip kontrolünde çözülüyordu, Vitest'in hiçbir alias/resolve yapılandırması yoktu. Bu şimdiye kadar sorun çıkarmamıştı çünkü test edilen dosyalardaki tüm `@/` import'ları `import type` (derleme sırasında tamamen elenen, runtime'da resolve edilmesi gerekmeyen) import'lardı. `resolve.alias` tanımlayan minimal bir `vitest.config.mts` eklendi (yeni bir bağımlılık gerekmedi).

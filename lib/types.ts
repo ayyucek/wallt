@@ -67,3 +67,10 @@ export interface FrequentExpense {
   type: TransactionType;
   count: number;
 }
+
+// Sık Kullanılanlar şeridinin top-3 kategori kısıtı (15 Eylül 2026, 2.
+// revizyon) — bkz. getTopCategoriesByUsage (lib/calculations.ts).
+export interface CategoryUsage {
+  categoryId: string;
+  count: number;
+}
