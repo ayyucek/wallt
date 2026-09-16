@@ -82,6 +82,14 @@ Harcama Ekle sheet'i açıldığında, form alanlarının **üstünde** yatay ka
 - Kullanıcı kendi custom kategorisini ekleyebilir
 - Her kategoriye otomatik renk ataması yapılır (sabit ve custom kategoriler dahil); form içinde seçili kategori chip'i kendi rengiyle vurgulanır
 
+**16 Eylül 2026 eklentisi — Yeni Kategori Modalı ve Kategori Yönetim Ekranı:**
+
+Kategori yönetimi iki ayrı yere bölünür, her biri farklı bir kullanım anına hizmet eder:
+
+- **Hızlı ekleme (Harcama Ekle sheet'i içinde):** Kategori chip'lerinin sonunda bir **"+ Yeni Kategori"** chip'i bulunur. Dokununca ayrı bir modal açılır: kategori adı, bir renk seçici (preset palet + custom hex kod girişi) ve seçilen ad/renkle canlı bir chip önizlemesi. "Kaydet"e basınca yeni kategori oluşturulur, kategori listesine eklenir ve **otomatik seçili** hale gelir — kullanıcı harcama girme akışını hiç bölmeden devam edebilir. Önceki inline text-input + "Ekle" butonu deseni bu modalla değiştirilir.
+- **Kategori Yönetimi (Ayarlar):** Üst çubukta yeni bir "Ayarlar" ikonu, tüm kategorileri (varsayılan + custom) liste halinde gösteren bir ekran açar. Her kategori için renk/isim düzenlenebilir ve silinebilir — **ancak yalnızca kullanıcının kendi oluşturduğu (custom) kategoriler için**. 7 varsayılan kategori (Yemek, Ulaşım, Eğlence, Market, Fatura, Sağlık, Diğer) **tamamen salt-okunurdur** — "Varsayılan" rozetiyle işaretlenir, ne rengi/ismi değiştirilebilir ne silinebilir (gerekçe: bkz. Teknik Analiz Bölüm 5.13 — bu kategoriler veritabanında satır olarak yok, uygulama koduna gömülü).
+- **Silme davranışı:** Bir custom kategori silinmeden önce, o kategoriye bağlı kaç harcama/tasarruf kaydı olduğu kullanıcıya gösterilir ("Bu kategoriye ait N kayıt var, silinince hepsi 'Diğer' kategorisine taşınacak. Emin misin?"). Onaylanınca ilgili kayıtlar önce "Diğer" kategorisine taşınır, sonra kategori silinir — hiçbir kayıt kategorisiz (referanssız) kalmaz.
+
 ### 5.3 Export & Paylaşım
 
 **Revizyon (11 Eylül 2026):** Aşağıdaki madde netleştirildi — "PDF olarak export edilebilir" ifadesi, tarayıcının yazdırma önizlemesini (`window.print()`) değil, kullanıcının cihazına indirebileceği/paylaşabileceği **gerçek bir `.pdf` dosyası** üretilmesini ifade eder (bkz. Teknik Analiz Bölüm 9).

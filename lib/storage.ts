@@ -150,3 +150,33 @@ export async function addCategory(input: { name: string; color: string }): Promi
   if (error) throw error;
   return rowToCategory(data);
 }
+
+export async function updateCategory(id: string, input: { name: string; color: string }): Promise<Category> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("categories")
+    .update({ name: input.name, color: input.color })
+    .eq("id", id)
+    .select(CATEGORY_COLUMNS)
+    .single();
+  if (error) throw error;
+  return rowToCategory(data);
+}
+
+// Bir kategoriyi siler. Önce ona bağlı TÜM transaction'ları tek bir toplu
+// UPDATE ile reassignTo'ya (varsayılan "diger") taşır, sonra kategori
+// satırını siler — hiçbir kayıt referanssız (orphan category_id) kalmaz.
+// Supabase client'ı çok-ifadeli bir DB transaction desteklemediğinden bu iki
+// adım ayrı sorgudur; taşıma başarısız olursa silme hiç denenmez (throw ile
+// durur), taşıma başarılı olup silme başarısız olursa kategori veri kaybı
+// olmadan "zombi" kalır (elle tekrar denenebilir).
+export async function deleteCategory(id: string, reassignTo = "diger"): Promise<void> {
+  const supabase = createClient();
+  const { error: reassignError } = await supabase
+    .from("transactions")
+    .update({ category_id: reassignTo })
+    .eq("category_id", id);
+  if (reassignError) throw reassignError;
+  const { error } = await supabase.from("categories").delete().eq("id", id);
+  if (error) throw error;
+}

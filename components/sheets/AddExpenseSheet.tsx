@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus } from "lucide-react";
+import { CUSTOM_PALETTE } from "@/lib/categories";
 import type { Category, FrequentExpense, Transaction, TransactionType } from "@/lib/types";
+import ColorPicker from "@/components/ui/ColorPicker";
+import BottomSheet from "./BottomSheet";
 import FrequentChips from "./FrequentChips";
 
 interface AddExpenseSheetProps {
@@ -21,7 +24,7 @@ interface AddExpenseSheetProps {
   // göre karar verir (2. revizyon).
   frequentExpensesByType?: Record<TransactionType, FrequentExpense[]>;
   onSubmit: (input: Omit<Transaction, "id">) => Promise<void>;
-  onAddCategory: (name: string) => Promise<Category>;
+  onAddCategory: (name: string, color: string) => Promise<Category>;
   onClose: () => void;
 }
 
@@ -63,8 +66,10 @@ export default function AddExpenseSheet({
   const [dateTimeValue, setDateTimeValue] = useState(() =>
     toDatetimeLocalValue(editingTransaction ? new Date(editingTransaction.timestamp) : new Date())
   );
-  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryModalOpen, setNewCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState(CUSTOM_PALETTE[0]);
+  const [newCategorySubmitting, setNewCategorySubmitting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -82,17 +87,24 @@ export default function AddExpenseSheet({
     setSelectedCategoryId(expense.categoryId);
   }
 
+  function openNewCategoryModal() {
+    setNewCategoryName("");
+    setNewCategoryColor(CUSTOM_PALETTE[categories.length % CUSTOM_PALETTE.length]);
+    setNewCategoryModalOpen(true);
+  }
+
   async function handleAddCategory() {
     const name = newCategoryName.trim();
     if (!name) return;
-    setError(null);
+    setNewCategorySubmitting(true);
     try {
-      const category = await onAddCategory(name);
+      const category = await onAddCategory(name, newCategoryColor);
       setSelectedCategoryId(category.id);
-      setNewCategoryName("");
-      setAddingCategory(false);
+      setNewCategoryModalOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kategori eklenemedi.");
+    } finally {
+      setNewCategorySubmitting(false);
     }
   }
 
@@ -117,6 +129,7 @@ export default function AddExpenseSheet({
   }
 
   return (
+    <>
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       <div className="flex rounded-pill bg-surface2 p-1">
         <button
@@ -224,45 +237,14 @@ export default function AddExpenseSheet({
               </button>
             );
           })}
-          {!addingCategory && (
-            <button
-              type="button"
-              onClick={() => setAddingCategory(true)}
-              className="flex items-center gap-1 rounded-pill border border-dashed border-border-dashed px-3 py-2 text-xs font-semibold text-muted"
-            >
-              <Plus size={12} /> Yeni
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={openNewCategoryModal}
+            className="flex items-center gap-1 rounded-pill border border-dashed border-border-dashed px-3 py-2 text-xs font-semibold text-muted"
+          >
+            <Plus size={12} /> Yeni Kategori
+          </button>
         </div>
-        {addingCategory && (
-          <div className="mt-2 flex gap-1.5">
-            <input
-              type="text"
-              value={newCategoryName}
-              onChange={(e) => setNewCategoryName(e.target.value)}
-              placeholder="Kategori adı"
-              className="flex-1 rounded-xl bg-surface2 px-3 py-2 text-base font-semibold text-ink outline-none"
-            />
-            <button
-              type="button"
-              onClick={handleAddCategory}
-              className="rounded-pill bg-surface2 px-3 py-2 text-xs font-bold text-ink"
-            >
-              Ekle
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setAddingCategory(false);
-                setNewCategoryName("");
-              }}
-              className="rounded-pill bg-surface2 px-2.5 py-2 text-ink"
-              aria-label="Vazgeç"
-            >
-              <X size={13} />
-            </button>
-          </div>
-        )}
       </div>
 
       {error && <p className="text-xs font-semibold text-category-saglik">{error}</p>}
@@ -289,5 +271,63 @@ export default function AddExpenseSheet({
         </button>
       </div>
     </form>
+
+    {/* "+ Yeni Kategori" modalı — AddExpenseSheet'in kendi local state'iyle
+        kontrol edilir (bkz. Teknik Analiz Bölüm 5.13). Nested bir BottomSheet
+        olduğundan kendi fixed+z-index'i sayesinde dıştaki sheet'in üstünde
+        sorunsuz render olur, BottomSheet.tsx'e dokunmaya gerek yok. */}
+    <BottomSheet
+      open={newCategoryModalOpen}
+      onClose={() => setNewCategoryModalOpen(false)}
+      title="Yeni Kategori"
+    >
+      <div className="flex flex-col gap-4">
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold text-muted">Kategori Adı</label>
+          <input
+            type="text"
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="örn. Spor"
+            className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold text-muted">Renk</label>
+          <ColorPicker value={newCategoryColor} onChange={setNewCategoryColor} />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-semibold text-muted">Önizleme</label>
+          <span
+            className="inline-flex items-center gap-1.5 rounded-pill px-3 py-2 text-xs font-semibold text-white"
+            style={{ background: newCategoryColor }}
+          >
+            <span className="h-2 w-2 rounded-full bg-white/85" />
+            {newCategoryName.trim() || "Kategori adı"}
+          </span>
+        </div>
+
+        <div className="mt-1 flex gap-2">
+          <button
+            type="button"
+            onClick={handleAddCategory}
+            disabled={!newCategoryName.trim() || newCategorySubmitting}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-pill bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-45 disabled:shadow-none"
+          >
+            {newCategorySubmitting ? "..." : "Kaydet"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setNewCategoryModalOpen(false)}
+            className="rounded-pill bg-surface2 px-4 py-3 text-sm font-bold text-ink"
+          >
+            Vazgeç
+          </button>
+        </div>
+      </div>
+    </BottomSheet>
+    </>
   );
 }

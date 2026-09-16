@@ -11,6 +11,7 @@ import BottomSheet from "@/components/sheets/BottomSheet";
 import AddExpenseSheet from "@/components/sheets/AddExpenseSheet";
 import DateRangeSheet from "@/components/sheets/DateRangeSheet";
 import ExportSheet from "@/components/sheets/ExportSheet";
+import CategoryManagementSheet from "@/components/sheets/CategoryManagementSheet";
 import Toast from "@/components/ui/Toast";
 import HeroTotal from "@/components/genel/HeroTotal";
 import SavingsSummaryCard from "@/components/genel/SavingsSummaryCard";
@@ -25,7 +26,7 @@ import PeriodPicker from "@/components/istatistikler/PeriodPicker";
 import PeriodStats from "@/components/istatistikler/PeriodStats";
 import CompareBarChart from "@/components/istatistikler/CompareBarChart";
 import CompareParetoChart from "@/components/istatistikler/CompareParetoChart";
-import { CUSTOM_PALETTE, DEFAULT_CATEGORIES } from "@/lib/categories";
+import { DEFAULT_CATEGORIES } from "@/lib/categories";
 import {
   aggregate,
   compareBarData,
@@ -48,9 +49,11 @@ import { formatCurrency, formatRangeLabel } from "@/lib/format";
 import {
   addCategory,
   addTransaction,
+  deleteCategory,
   deleteTransaction,
   fetchCategories,
   fetchTransactions,
+  updateCategory,
   updateTransaction,
 } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
@@ -96,6 +99,7 @@ export default function Home() {
   const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const [rangeSheetOpen, setRangeSheetOpen] = useState(false);
+  const [categoryManagementOpen, setCategoryManagementOpen] = useState(false);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
@@ -346,11 +350,25 @@ export default function Home() {
     setToast(`"${tx.title}" silindi`);
   }
 
-  async function handleAddCategory(name: string): Promise<Category> {
-    const color = CUSTOM_PALETTE[categories.length % CUSTOM_PALETTE.length];
+  async function handleAddCategory(name: string, color: string): Promise<Category> {
     const category = await addCategory({ name, color });
     setCategories((prev) => [...prev, category]);
     return category;
+  }
+
+  async function handleUpdateCategory(id: string, input: { name: string; color: string }): Promise<void> {
+    const updated = await updateCategory(id, input);
+    setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
+  }
+
+  // Silme öncesi bağlı kayıt sayısı zaten bellekteki transactions'tan
+  // hesaplanıyor (bkz. CategoryManagementSheet) — burada sadece storage.ts'in
+  // toplu taşı+sil işlemini çağırıp local state'i (hem categories hem
+  // transactions) DB ile senkron tutuyoruz.
+  async function handleDeleteCategory(id: string): Promise<void> {
+    await deleteCategory(id, "diger");
+    setTransactions((prev) => prev.map((t) => (t.categoryId === id ? { ...t, categoryId: "diger" } : t)));
+    setCategories((prev) => prev.filter((c) => c.id !== id));
   }
 
   function openAddSheet(categoryId?: string) {
@@ -372,6 +390,7 @@ export default function Home() {
           <TopBar
             onExportClick={() => setExportSheetOpen(true)}
             onShareClick={() => setExportSheetOpen(true)}
+            onSettingsClick={() => setCategoryManagementOpen(true)}
             onLogoutClick={handleLogout}
           />
 
@@ -620,6 +639,19 @@ export default function Home() {
           rangeEnd={rangeEnd}
           total={totalExpenses}
           categories={pieData}
+        />
+      </BottomSheet>
+
+      <BottomSheet
+        open={categoryManagementOpen}
+        onClose={() => setCategoryManagementOpen(false)}
+        title="Kategorileri Yönet"
+      >
+        <CategoryManagementSheet
+          categories={categories}
+          transactions={transactions}
+          onUpdateCategory={handleUpdateCategory}
+          onDeleteCategory={handleDeleteCategory}
         />
       </BottomSheet>
 
