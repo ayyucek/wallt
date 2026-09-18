@@ -214,16 +214,30 @@ export default function Home() {
   // Tasarruf için AYRI hesaplanır (15 Eylül 2026, 2. revizyon) — her type'ın
   // kendi top-3 kategorisiyle sınırlı bir liste elde eder; AddExpenseSheet
   // kendi entryType state'ine göre bunlardan doğru olanı seçer.
+  //
+  // Düzenli Ödemeler istisnası (Faz 6, PRD 5.6) — recurring_payment_id dolu
+  // olan transaction'lar (hem tanımlama anında elle oluşturulan ilki hem
+  // Faz 3'ün otomatik ürettiği sonrakiler) burada, tespit fonksiyonlarına
+  // girmeden ÖNCE elenir. getFrequentExpenses/getTopCategoriesByUsage'ın
+  // kendisi bilerek genel amaçlı kalır (lib/calculations.ts değişmedi) —
+  // filtre sadece bu çağrı noktasına özel.
+  const nonRecurringTransactions = useMemo(
+    () => transactions.filter((t) => !t.recurringPaymentId),
+    [transactions]
+  );
+
   const frequentExpensesByType = useMemo(() => {
     const result: Record<TransactionType, FrequentExpense[]> = { expense: [], saving: [] };
     (["expense", "saving"] as TransactionType[]).forEach((type) => {
-      const topCategoryIds = new Set(getTopCategoriesByUsage(transactions, type).map((c) => c.categoryId));
-      result[type] = getFrequentExpenses(transactions.filter((t) => t.type === type)).filter((e) =>
-        topCategoryIds.has(e.categoryId)
+      const topCategoryIds = new Set(
+        getTopCategoriesByUsage(nonRecurringTransactions, type).map((c) => c.categoryId)
+      );
+      result[type] = getFrequentExpenses(nonRecurringTransactions.filter((t) => t.type === type)).filter(
+        (e) => topCategoryIds.has(e.categoryId)
       );
     });
     return result;
-  }, [transactions]);
+  }, [nonRecurringTransactions]);
 
   const filtered = useMemo(
     () => filterByRange(transactions, rangeStart, rangeEnd),
