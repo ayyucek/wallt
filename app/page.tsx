@@ -12,6 +12,8 @@ import AddExpenseSheet, { type RecurringPaymentDraft } from "@/components/sheets
 import DateRangeSheet from "@/components/sheets/DateRangeSheet";
 import ExportSheet from "@/components/sheets/ExportSheet";
 import CategoryManagementSheet from "@/components/sheets/CategoryManagementSheet";
+import SettingsMenuSheet from "@/components/sheets/SettingsMenuSheet";
+import RecurringPaymentsManagementSheet from "@/components/sheets/RecurringPaymentsManagementSheet";
 import Toast from "@/components/ui/Toast";
 import HeroTotal from "@/components/genel/HeroTotal";
 import SavingsSummaryCard from "@/components/genel/SavingsSummaryCard";
@@ -50,6 +52,7 @@ import {
   addCategory,
   addRecurringPayment,
   addTransaction,
+  cancelRecurringPayment,
   checkAndGenerateRecurringPayments,
   deleteCategory,
   deleteTransaction,
@@ -57,6 +60,7 @@ import {
   fetchRecurringPayments,
   fetchTransactions,
   updateCategory,
+  updateRecurringPayment,
   updateTransaction,
 } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
@@ -110,6 +114,8 @@ export default function Home() {
   const [exportSheetOpen, setExportSheetOpen] = useState(false);
   const [rangeSheetOpen, setRangeSheetOpen] = useState(false);
   const [categoryManagementOpen, setCategoryManagementOpen] = useState(false);
+  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [recurringManagementOpen, setRecurringManagementOpen] = useState(false);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
@@ -443,6 +449,23 @@ export default function Home() {
     setCategories((prev) => prev.filter((c) => c.id !== id));
   }
 
+  // Ayarlar → "Düzenli Ödemeleri Yönet" (Faz 5, PRD 5.6, Teknik Analiz 5.14).
+  // Her ikisi de yalnızca recurring_payments satırını günceller — daha önce
+  // üretilmiş transaction'lara dokunulmaz (storage.ts'teki fonksiyonlar zaten
+  // sadece UPDATE yapıyor, hiç transaction sorgusu/yazması yok).
+  async function handleUpdateRecurringPayment(
+    id: string,
+    input: { amount: number; paymentDay: number | null }
+  ): Promise<void> {
+    const updated = await updateRecurringPayment(id, input);
+    setRecurringPayments((prev) => prev.map((p) => (p.id === id ? updated : p)));
+  }
+
+  async function handleCancelRecurringPayment(id: string): Promise<void> {
+    await cancelRecurringPayment(id);
+    setRecurringPayments((prev) => prev.map((p) => (p.id === id ? { ...p, status: "cancelled" } : p)));
+  }
+
   function openAddSheet(categoryId?: string) {
     setEditingTransaction(undefined);
     setInitialAddCategoryId(categoryId);
@@ -462,7 +485,7 @@ export default function Home() {
           <TopBar
             onExportClick={() => setExportSheetOpen(true)}
             onShareClick={() => setExportSheetOpen(true)}
-            onSettingsClick={() => setCategoryManagementOpen(true)}
+            onSettingsClick={() => setSettingsMenuOpen(true)}
             onLogoutClick={handleLogout}
           />
 
@@ -716,6 +739,19 @@ export default function Home() {
         />
       </BottomSheet>
 
+      <BottomSheet open={settingsMenuOpen} onClose={() => setSettingsMenuOpen(false)} title="Ayarlar">
+        <SettingsMenuSheet
+          onManageCategories={() => {
+            setSettingsMenuOpen(false);
+            setCategoryManagementOpen(true);
+          }}
+          onManageRecurringPayments={() => {
+            setSettingsMenuOpen(false);
+            setRecurringManagementOpen(true);
+          }}
+        />
+      </BottomSheet>
+
       <BottomSheet
         open={categoryManagementOpen}
         onClose={() => setCategoryManagementOpen(false)}
@@ -726,6 +762,19 @@ export default function Home() {
           transactions={transactions}
           onUpdateCategory={handleUpdateCategory}
           onDeleteCategory={handleDeleteCategory}
+        />
+      </BottomSheet>
+
+      <BottomSheet
+        open={recurringManagementOpen}
+        onClose={() => setRecurringManagementOpen(false)}
+        title="Düzenli Ödemeleri Yönet"
+      >
+        <RecurringPaymentsManagementSheet
+          recurringPayments={recurringPayments}
+          categories={categories}
+          onUpdate={handleUpdateRecurringPayment}
+          onCancel={handleCancelRecurringPayment}
         />
       </BottomSheet>
 
