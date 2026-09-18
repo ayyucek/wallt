@@ -15,6 +15,9 @@ export interface Transaction {
   amount: number; // TL, iki ondalık basamağa kadar (kuruş) desteklenir
   categoryId: string;
   timestamp: string; // ISO 8601 string, new Date().toISOString()
+  // Düzenli Ödemeler (18 Eylül 2026 eklentisi, PRD 5.6) — bu transaction bir
+  // RecurringPayment'tan otomatik üretildiyse onun id'si, aksi halde null.
+  recurringPaymentId: string | null;
 }
 
 export interface DateRange {
@@ -73,4 +76,22 @@ export interface FrequentExpense {
 export interface CategoryUsage {
   categoryId: string;
   count: number;
+}
+
+// Düzenli Ödemeler — Taksit ve Abonelik (18 Eylül 2026 eklentisi, PRD 5.6).
+export type RecurringPaymentType = "installment" | "subscription";
+export type RecurringPaymentStatus = "active" | "completed" | "cancelled";
+
+export interface RecurringPayment {
+  id: string;
+  type: RecurringPaymentType;
+  title: string;
+  categoryId: string;
+  amount: number; // aylık/taksit tutarı
+  startDate: string; // "YYYY-MM-DD"
+  installmentCount: number | null; // yalnızca "installment"
+  installmentsPaid: number;
+  paymentDay: number | null; // yalnızca "subscription" — ayın kaçı
+  status: RecurringPaymentStatus;
+  lastGeneratedDate: string | null; // "YYYY-MM-DD", en son üretilen ay
 }

@@ -515,6 +515,143 @@ Bkz. PRD Bölüm 5.2 revizyonu. Önceki inline "+ Yeni" text-input akışı bir 
 
 ---
 
+### 5.14 Düzenli Ödemeler — Taksit ve Abonelik (18 Eylül 2026 eklentisi)
+
+Bkz. PRD Bölüm 5.6. Ayrı bir sekme yok — düzenli ödemeler otomatik olarak normal `transactions` kayıtlarına dönüşür, `recurring_payment_id` ile işaretlenir.
+
+**Veri modeli — `supabase/migrations/20260918_recurring_payments.sql` (yeni migration):**
+```sql
+create table if not exists public.recurring_payments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
+  type text not null check (type in ('installment', 'subscription')),
+  title text not null,
+  category_id text not null,
+  amount numeric(10,2) not null check (amount > 0),
+  start_date date not null,
+  installment_count integer,
+  installments_paid integer not null default 0,
+  payment_day integer,
+  status text not null default 'active' check (status in ('active', 'completed', 'cancelled')),
+  last_generated_date date,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.transactions
+  add column if not exists recurring_payment_id uuid references public.recurring_payments (id) on delete set null;
+
+-- RLS: mevcut categories/transactions politikalarıyla birebir aynı desen (auth.uid() = user_id).
+```
+`recurring_payment_id` `on delete set null` — bir düzenli ödeme kaydı (teorik olarak) silinirse geçmiş transaction'lar referanssız kalmaz, sadece rozetsiz normal harcamaya döner. Pratikte bu MVP'de düzenli ödeme hiç hard-delete edilmiyor (iptal = `status='cancelled'`), ama bu FK davranışı yine de savunmacı bir güvence.
+
+**`lib/types.ts`:**
+```ts
+export type RecurringPaymentType = "installment" | "subscription";
+export type RecurringPaymentStatus = "active" | "completed" | "cancelled";
+
+export interface RecurringPayment {
+  id: string;
+  type: RecurringPaymentType;
+  title: string;
+  categoryId: string;
+  amount: number;
+  startDate: string;              // "YYYY-MM-DD"
+  installmentCount: number | null; // yalnızca installment
+  installmentsPaid: number;
+  paymentDay: number | null;       // yalnızca subscription
+  status: RecurringPaymentStatus;
+  lastGeneratedDate: string | null;
+}
+```
+`Transaction`'a eklenen alan: `recurringPaymentId: string | null`.
+
+**`lib/calculations.ts` — `computeRecurringGenerations` (saf fonksiyon, backfill mantığı):** Otomatik üretimin TÜM tarih matematiği burada, DB'den tamamen bağımsız — bu, mevcut test stratejisiyle (Bölüm 7: "tarih sınır durumlarını kapsa") birebir uyumlu olsun diye bilinçli bir mimari karar. `lib/storage.ts` sadece bu fonksiyonun ürettiği listeyi DB'ye yazar, tarih hesabı yapmaz.
+```ts
+export interface RecurringGeneration {
+  date: string;              // "YYYY-MM-DD" — hem yeni transaction'ın occurred_at'i hem last_generated_date
+  installmentsPaidAfter: number; // installment için sayaç; subscription'da anlamsız (0)
+  completesPayment: boolean;     // installment_count'a ulaşıldı mı
+}
+
+export function computeRecurringGenerations(
+  payment: RecurringPayment,
+  today: Date = new Date()
+): RecurringGeneration[]
+```
+- `payment.status !== "active"` ise boş dizi döner (tamamlanmış/iptal edilmiş ödemeler asla yeni üretim yapmaz).
+- Gün (`day`): abonelikte `payment.paymentDay`, taksitte `start_date`'in günü.
+- Başlangıç ayı: `last_generated_date` varsa **bir sonraki ay**dan devam eder (ilk taksit zaten tanımlama anında elle oluşturulduğu için — bkz. aşağıdaki "Tanımlama akışı" — `last_generated_date` kayıt oluşturulurken bugünün ayına set edilir, bu fonksiyon asla ilk ayı tekrar üretmez); yoksa `start_date`'in ayından başlar.
+- **Ay sonu taşması (18 Eylül 2026, kod incelemesi):** `clampDayToMonth(monthStart, day)` ayın `day`'den kısa olduğu durumlarda ayın son gününe sabitler (örn. `payment_day=31`, Şubat'ta 28/29'a düşer):
+  ```ts
+  function clampDayToMonth(monthStart: Date, day: number): Date {
+    const daysInMonth = endOfMonth(monthStart).getDate();
+    return new Date(monthStart.getFullYear(), monthStart.getMonth(), Math.min(day, daysInMonth));
+  }
+  ```
+  `endOfMonth`/`addMonths`/`startOfMonth` — dosyada **zaten var olan**, yerel `Date` getter'larıyla çalışan (UTC `.slice()`/`.toISOString()` DEĞİL) yardımcı fonksiyonlar (bkz. `periodGranularity`/`buildCumulativeDateMap`, ve `txDateStr`'daki "UTC slice KULLANMAYIN" uyarısı) — `computeRecurringGenerations` bunları **olduğu gibi yeniden kullanır**, yeni bir tarih kütüphanesi (date-fns vb.) eklenmez ve tüm ay hesapları aynı yerel-tarih yaklaşımıyla tutarlı kalır, ±1 gün kayması riski oluşmaz.
+  Her ay için vade tarihi bu şekilde hesaplanır; **bugünden büyükse döngü durur** (henüz vadesi gelmemiş ay için üretim yapılmaz).
+- **Geriye dönük tamamlama** (PRD kararı): döngü tek bir ay değil, `last_generated_date`'ten bugüne kadar **her kaçırılan ayı sırayla** işler — kullanıcı 2 ay uygulamayı açmasa bile geri döndüğünde hepsi tamamlanır.
+- **Taksit sayısını aşmama garantisi (18 Eylül 2026, kod incelemesi):** Döngünün her adımında, yeni bir taksit üretmeden ÖNCE `installmentsPaid >= installment_count` kontrolü yapılır — true ise döngü hiç üretim yapmadan durur. Bir ay üretimi `installmentsPaid`'i tam olarak `installment_count`'a **eşitlerse**, o ayın üretimi listeye eklenir (`completesPayment: true`) ama döngü **hemen orada** kırılır — kalan kaçırılmış aylar (varsa) hiç işlenmez. Örnek: `installment_count=12`, `installmentsPaid=10` (2 taksit kaldı), 3 ay kaçırılmış → döngü sadece 2 üretim yapar (11. ve 12. taksit), 3. kaçırılan ay için **hiçbir şey üretmez**, `status='completed'` olarak işaretler. `lib/calculations.test.ts`'e bu senaryo birebir test edilecek: *"kaçırılan ay sayısı kalan taksitten fazlaysa fazlası üretilmez, completed'da kesilir."*
+
+**`supabase/migrations/20260918_recurring_payments.sql` — atomiklik için Postgres fonksiyonu (18 Eylül 2026, kod incelemesi):** Yeni transaction(lar)ın eklenmesi VE `recurring_payments`'ın (`installments_paid`/`last_generated_date`/`status`) güncellenmesi **iki ayrı Supabase sorgusu olarak gönderilmez** — biri başarılı biri başarısız olursa (ağ kopması, geçici hata) ya aynı ay çift üretilir ya da `last_generated_date` hiç ilerlemeden bir ay tamamen atlanır. Bunun yerine tek bir Postgres fonksiyonu (aynı migration dosyasında) hem INSERT'leri hem UPDATE'i yapar — bir fonksiyon çağrısı Postgres'te tek bir implicit transaction'dır, ya hepsi ya hiçbiri:
+```sql
+create or replace function public.generate_recurring_payment_transactions(
+  p_payment_id uuid,
+  p_occurred_dates date[],
+  p_new_installments_paid integer,
+  p_new_last_generated_date date,
+  p_new_status text
+) returns void
+language plpgsql
+as $$
+declare
+  v_payment public.recurring_payments%rowtype;
+  v_date date;
+begin
+  select * into v_payment from public.recurring_payments where id = p_payment_id;
+  if not found then
+    raise exception 'recurring payment % not found', p_payment_id;
+  end if;
+
+  foreach v_date in array p_occurred_dates loop
+    insert into public.transactions (type, title, description, amount, category_id, occurred_at, recurring_payment_id)
+    values ('expense', v_payment.title, '', v_payment.amount, v_payment.category_id, v_date::timestamptz, p_payment_id);
+  end loop;
+
+  update public.recurring_payments
+  set installments_paid = p_new_installments_paid,
+      last_generated_date = p_new_last_generated_date,
+      status = p_new_status,
+      updated_at = now()
+  where id = p_payment_id;
+end;
+$$;
+```
+`security definer` KULLANILMIYOR (bilinçli) — fonksiyon çağıranın (invoker) yetkisiyle çalışır, bu yüzden mevcut RLS politikaları hem `recurring_payments` SELECT/UPDATE'inde hem `transactions` INSERT'inde (varsayılan `user_id = auth.uid()`) olduğu gibi devreye girer; sahibi olmayan bir `p_payment_id` verilirse `select ... into` hiçbir satır bulamaz (RLS SELECT politikası zaten gizler) ve fonksiyon `raise exception` ile güvenle durur — ekstra bir sahiplik kontrolü yazmaya gerek kalmaz.
+
+**`lib/storage.ts` — DB I/O katmanı:**
+```ts
+export async function fetchRecurringPayments(): Promise<RecurringPayment[]>
+export async function addRecurringPayment(input: Omit<RecurringPayment, "id" | "installmentsPaid" | "status" | "lastGeneratedDate">): Promise<RecurringPayment>
+export async function updateRecurringPayment(id: string, input: { amount: number; paymentDay: number | null }): Promise<RecurringPayment>
+export async function cancelRecurringPayment(id: string): Promise<void>  // status='cancelled', UPDATE — DELETE değil
+export async function checkAndGenerateRecurringPayments(): Promise<Transaction[]>
+```
+`checkAndGenerateRecurringPayments`: tüm `status='active'` düzenli ödemeleri çeker (RLS zaten kullanıcıya scope ediyor, ekstra `user_id` filtresi gerekmez — mevcut `fetchCategories`/`fetchTransactions` deseniyle tutarlı), her biri için `computeRecurringGenerations` çağırır, üretilecek varsa `supabase.rpc("generate_recurring_payment_transactions", {...})` ile **tek atomik çağrıda** hem transaction'ları ekler hem düzenli ödemeyi günceller. Üretilen transaction'ları (varsa), RPC'den dönen veriye güvenmek yerine **zaten bilinen girdi verisinden** (`payment.title`/`categoryId`/`amount` + üretilen tarihler) client-side inşa edip `Transaction[]` olarak döner — ekstra bir SELECT round-trip'i gerekmez. `app/page.tsx` bunları local `transactions` state'ine ekler, tam bir refetch gerekmez.
+
+**`app/page.tsx`:** İlk veri yüklemesinin (mevcut `useEffect`) hemen ardından, kullanıcı doğrulanmış olduğunda **bir kez** `checkAndGenerateRecurringPayments()` çağrılır; dönen yeni transaction'lar `sortByTimestampDesc([...prev, ...yeniler])` ile mevcut `transactions` state'ine eklenir. Ayrı bir cron/sunucu görevi yok (MVP kararı) — üretim tetikleyicisi, kullanıcının uygulamayı açması.
+
+**`components/sheets/AddExpenseSheet.tsx` — tanımlama akışı:** "Bu düzenli bir ödeme mi?" toggle'ı + açılınca Taksit/Abonelik segmented control + (taksitte) "Toplam taksit sayısı" input'u. Submit'te `isRecurring` true ise mevcut `onSubmit` yerine yeni bir `onSubmitRecurring(input)` prop'u çağrılır — bu, `page.tsx`'te HEM `addRecurringPayment` HEM de (aynı işlemin parçası olarak) bugünün tarihiyle ilk `addTransaction` çağrısını (`recurringPaymentId` set edilmiş, `installmentsPaid: 1`/`lastGeneratedDate: bugün` ile) yapan tek bir fonksiyon. Bu sayede `computeRecurringGenerations` hiçbir zaman "ilk ayı" tekrar üretmez (yukarıda açıklandığı gibi).
+
+**`components/hareketler/TransactionList.tsx`:** Yeni `recurringPayments: RecurringPayment[]` prop'u. `t.recurringPaymentId` doluysa, ilgili `RecurringPayment`'ı bulup 🔁 rozeti + kısa durum metni gösterir ("Taksit 3/12" veya "Abonelik").
+
+**`components/sheets/RecurringPaymentsManagementSheet.tsx` (net-new):** `CategoryManagementSheet` ile aynı liste/accordion tasarım dili (tutarlılık için — PRD'nin açık isteği). Düzenleme **sadece `amount`/`payment_day`'i değiştirir, geçmiş transaction'lara dokunmaz** — gelecekteki `computeRecurringGenerations` çağrıları güncel değerleri kullanır. İptal, `deleteCategory`'nin aksine bir **DELETE değil UPDATE**'tir (`status='cancelled'`) — geçmiş kayıtlar hiç etkilenmez, kasıtlı olarak "Diğer'e taşıma" gibi bir taşıma mantığı da gerekmez.
+
+**Sık Kullanılanlar çakışma önleme:** `getFrequentExpenses`'in kendisi **değiştirilmedi** — fonksiyon hâlâ genel amaçlı ve `recurring_payment_id` kavramından habersiz kalıyor (tek başına test edilebilirliği/yeniden kullanılabilirliği korunuyor). Hariç tutma, **çağıran tarafta** (`app/page.tsx`'teki `frequentExpensesByType` hesaplaması) yapılıyor: `transactions.filter(t => t.type === type && !t.recurringPaymentId)` — `getFrequentExpenses`'e zaten düzenli-ödeme-kaynaklı kayıtlar hiç girmiyor.
+
+---
+
 ## 6. Build Sırası (Fazlar)
 
 Her faz, tek başına çalışır bir uygulama üretmeli — yani Faz 2 bitince uygulama açılıp gezinilebilir olmalı, sadece eksik özellikler olur. Bu, vibe coding'de her adımdan sonra "çalışıyor mu" diye test edebilmek için kritik.
@@ -534,6 +671,8 @@ Her faz, tek başına çalışır bir uygulama üretmeli — yani Faz 2 bitince 
 **Faz 7'nin neden burada olduğu:** Auth'u daha erken (ör. Faz 0/1) sokmak, Faz 3-6'nın tamamını (seed veriyle çalışan UI) gereksiz yere kimlik doğrulama akışının arkasına kilitlerdi ve o fazlarda zaten yazılmış/commit'lenmiş hiçbir kod bundan fayda görmezdi. Auth'u Kalıcılık'tan (Faz 8) hemen önce koymak mantıklı çünkü ikisi sıkı bağımlı: Supabase RLS politikaları `auth.uid()`'a göre çalışır, yani gerçek veri bağlamadan önce bir oturumun var olması gerekir. Faz 3-6 aralığında hâlâ seed veriyle çalışılmaya devam edilir, bu yüzden bu sıralama mevcut ilerlemeyi bozmaz.
 
 **Mini-Faz — Sık Kullanılanlar Şeridi (15 Eylül 2026 eklentisi):** Faz 4'ün (Harcama Ekle akışı) üstüne, ayrı bir Faz numarası açmadan eklenen küçük bir iyileştirme — `lib/calculations.ts`'e `getFrequentExpenses()` + `components/sheets/FrequentChips.tsx` + `AddExpenseSheet`'e entegrasyon (bkz. Bölüm 5.12). Bağımlılığı Faz 8'in (gerçek `transactions` verisi) tamamlanmış olmasıdır; mock seed verisiyle de çalışır ama anlamlı sonuç üretmesi için gerçek kullanım geçmişi gerekir.
+
+**Mini-Faz — Düzenli Ödemeler (18 Eylül 2026 eklentisi):** Yeni bir tablo (`recurring_payments`) ve `transactions.recurring_payment_id` FK'ı gerektirdiğinden Faz 8'e (Kalıcılık) bağımlı, ama ayrı bir Faz numarası açmıyor — mevcut Harcama Ekle akışının (Faz 4) ve Ayarlar/kategori yönetiminin (16 Eylül mini-fazı) üzerine inşa edilen bir uzantı. Alt adımlar (bkz. Bölüm 5.14): (1) migration + types, (2) `AddExpenseSheet` tanımlama akışı, (3) `computeRecurringGenerations` + `checkAndGenerateRecurringPayments` + `page.tsx` mount-time tetikleyici, (4) `TransactionList` rozeti, (5) `RecurringPaymentsManagementSheet`, (6) `FrequentChips` çakışma önleme. Her alt adım ayrı commit'le ilerletilir (kullanıcı talebi).
 
 ---
 

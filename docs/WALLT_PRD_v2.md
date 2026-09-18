@@ -115,6 +115,20 @@ Kategori yönetimi iki ayrı yere bölünür, her biri farklı bir kullanım an�
 - **Şifremi Unuttum akışı (13 Eylül 2026 eklentisi):** Giriş ekranındaki "Şifremi unuttum?" linki, kullanıcının email'ine Supabase'in gönderdiği bir sıfırlama bağlantısı tetikler; bağlantı, yeni bir **`/reset-password`** ekranına yönlendirir (yeni şifre + tekrar alanı). Hesap var/yok bilgisini sızdırmamak için gönderim sonrası mesaj her zaman aynıdır ("eğer bu email'e kayıtlı bir hesap varsa..."). Bağlantı geçersiz/süresi dolmuşsa kullanıcıya bunu belirten bir hata gösterilir, akışı tekrar başlatmasına yönlendirilir. (Bu dokümanın önceki sürümünde "ayrı bir ekran gerektirmez" deniyordu — pratikte bir kullanıcının giriş yapamaması üzerine yapılan inceleme, böyle bir akışın hiç var olmadığını ortaya çıkardı; bu revizyon o eksiği kapatır.)
 - Tüm harcama/tasarruf/kategori verisi kullanıcı hesabına bağlıdır; bir kullanıcı yalnızca kendi verisini görür (bkz. Bölüm 10)
 
+### 5.6 Düzenli Ödemeler — Taksit ve Abonelik (18 Eylül 2026 eklentisi)
+
+**Ayrı bir sekme açılmaz.** Düzenli ödemeler (Taksit / Abonelik), otomatik olarak normal `transactions` kayıtlarına dönüşür ve Son Hareketler'de diğer harcamalarla birlikte, sadece küçük bir 🔁 rozetiyle işaretlenmiş şekilde görünür — kullanıcı için ayrı bir zihinsel model gerekmez, "bu ay bir harcama daha oldu" akışı bozulmaz.
+
+- **Tanımlama:** Harcama Ekle formunda "Bu düzenli bir ödeme mi?" toggle'ı. Açılınca **Taksit** / **Abonelik** seçimi çıkar:
+  - **Taksit:** "Toplam taksit sayısı" girilir. Girilen tutar **aylık taksit tutarıdır** (toplam değil).
+  - **Abonelik:** Bitiş tarihi yok, süresiz aktif kalır; ödeme günü, girilen başlangıç tarihinin **gününden** türetilir (ayrı bir "ödeme günü" alanı kullanıcıya gösterilmez).
+  - Kaydedince hem düzenli ödeme tanımı oluşur hem de **bugün için ilk kayıt** normal bir transaction olarak (düzenli ödemeyle ilişkili, rozetli) hemen eklenir — kullanıcı "kaydettim ama hiçbir şey olmadı" hissine kapılmaz.
+- **Otomatik üretim:** Ayrı bir sunucu/cron gerektirmez (MVP kapsamı). Kullanıcı uygulamayı her açtığında, o ana kadar **kaçırılmış tüm aylar geriye dönük tamamlanır** — örn. kullanıcı 2 ay uygulamayı açmadıysa, geri döndüğünde o 2 ayın da işlemleri (varsa) sırayla oluşturulur, sadece "bugün" kontrol edilmez.
+- **Taksit tamamlanması:** Ödenen taksit sayısı toplam taksit sayısına ulaşınca düzenli ödeme "tamamlandı" durumuna geçer, bir daha yeni işlem üretmez.
+- **Görüntüleme:** Son Hareketler'deki ilgili satırlarda 🔁 rozeti + kısa durum ("Taksit 3/12" gibi); Taksit dışındaki (Abonelik) kayıtlarda sadece tip etiketi yeterlidir.
+- **Yönetim (Ayarlar):** "Düzenli Ödemeler" bölümü, kategori yönetimi ekranıyla tutarlı bir liste tasarımıyla — her satırda başlık, tutar, tip rozeti, durum özeti. **Düzenleme, geçmişte zaten oluşmuş transaction'ları etkilemez** — sadece bundan sonraki üretimi değiştirir. **İptal**, geçmiş kayıtları silmez, sadece gelecekteki üretimi durdurur.
+- **Sık Kullanılanlar şeridiyle çakışma önleme:** Bir düzenli ödemeden otomatik üretilen transaction'lar, "Sık Kullanılanlar" tespitine (bkz. 5.1.2) **dahil edilmez** — zaten bilinen, düzenli bir ödeme olduğu için kullanıcıya ayrıca "bunu sık kullanılan yap" önerisi çıkmaz, gereksiz/yanıltıcı bir chip oluşmaz.
+
 ## 6. Bilgi Mimarisi ve Navigasyon (Mobil-First)
 
 **Revizyon (11 Eylül 2026):** WALLT mobil-first tasarlanır (temel/varsayılan stiller mobil içindir) ama artık gerçek anlamda **responsive**'dir: masaüstü ve tablette mobil kalıplar (alt tab bar, FAB, bottom sheet) olduğu gibi büyütülmez, ekran genişliğine uygun kendi eşdeğerlerine dönüşür. Üç düzen aşağıda tanımlanmıştır; tam breakpoint eşlemesi için **Teknik Analiz Dokümanı Bölüm 4**'e bakınız.

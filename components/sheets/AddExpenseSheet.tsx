@@ -121,6 +121,9 @@ export default function AddExpenseSheet({
         amount: parsedAmount,
         categoryId: selectedCategoryId,
         timestamp: new Date(dateTimeValue).toISOString(),
+        // Düzenlenen kayıt bir düzenli ödemeden geldiyse bu form onu koparmaz
+        // (recurringPaymentId sessizce korunur); brand-new bir kayıtta null.
+        recurringPaymentId: editingTransaction?.recurringPaymentId ?? null,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kayıt eklenemedi.");

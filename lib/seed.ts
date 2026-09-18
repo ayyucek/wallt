@@ -102,6 +102,7 @@ export function generateSeedData(categories: Category[] = DEFAULT_CATEGORIES): T
         amount,
         categoryId: cat.id,
         timestamp: randomTimeOn(day).toISOString(),
+        recurringPaymentId: null,
       });
     });
 
@@ -116,6 +117,7 @@ export function generateSeedData(categories: Category[] = DEFAULT_CATEGORIES): T
         amount,
         categoryId: cat.id,
         timestamp: randomTimeOn(day).toISOString(),
+        recurringPaymentId: null,
       });
     }
   }

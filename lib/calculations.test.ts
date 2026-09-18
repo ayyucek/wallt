@@ -35,6 +35,7 @@ function tx(overrides: Partial<Transaction>): Transaction {
     amount: 100,
     categoryId: "yemek",
     timestamp: new Date().toISOString(),
+    recurringPaymentId: null,
     ...overrides,
   };
 }

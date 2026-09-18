@@ -1,6 +1,13 @@
 import { DEFAULT_CATEGORIES } from "./categories";
 import { createClient } from "./supabase/client";
-import type { Category, Transaction, TransactionType } from "./types";
+import type {
+  Category,
+  RecurringPayment,
+  RecurringPaymentStatus,
+  RecurringPaymentType,
+  Transaction,
+  TransactionType,
+} from "./types";
 
 // Supabase okuma/yazma katmanı. RLS, satırları auth.uid()'a göre otomatik
 // filtrelediği için burada kullanıcı bazlı filtreleme elle yapılmıyor.
@@ -13,6 +20,7 @@ interface TransactionRow {
   amount: number;
   category_id: string;
   occurred_at: string;
+  recurring_payment_id: string | null;
 }
 
 interface CategoryRow {
@@ -21,8 +29,25 @@ interface CategoryRow {
   color: string;
 }
 
-const TRANSACTION_COLUMNS = "id, type, title, description, amount, category_id, occurred_at";
+interface RecurringPaymentRow {
+  id: string;
+  type: RecurringPaymentType;
+  title: string;
+  category_id: string;
+  amount: number;
+  start_date: string;
+  installment_count: number | null;
+  installments_paid: number;
+  payment_day: number | null;
+  status: RecurringPaymentStatus;
+  last_generated_date: string | null;
+}
+
+const TRANSACTION_COLUMNS =
+  "id, type, title, description, amount, category_id, occurred_at, recurring_payment_id";
 const CATEGORY_COLUMNS = "id, name, color";
+const RECURRING_PAYMENT_COLUMNS =
+  "id, type, title, category_id, amount, start_date, installment_count, installments_paid, payment_day, status, last_generated_date";
 
 // PostgREST bazen (client/sunucu saat senkronizasyon gecikmesi veya bilinen bir
 // PostgREST cache bug'ı yüzünden) yeni basılmış bir JWT'yi "gelecekte basılmış"
@@ -61,11 +86,28 @@ function rowToTransaction(row: TransactionRow): Transaction {
     amount: row.amount,
     categoryId: row.category_id,
     timestamp: row.occurred_at,
+    recurringPaymentId: row.recurring_payment_id,
   };
 }
 
 function rowToCategory(row: CategoryRow): Category {
   return { id: row.id, name: row.name, color: row.color, isCustom: true };
+}
+
+function rowToRecurringPayment(row: RecurringPaymentRow): RecurringPayment {
+  return {
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    categoryId: row.category_id,
+    amount: row.amount,
+    startDate: row.start_date,
+    installmentCount: row.installment_count,
+    installmentsPaid: row.installments_paid,
+    paymentDay: row.payment_day,
+    status: row.status,
+    lastGeneratedDate: row.last_generated_date,
+  };
 }
 
 export async function fetchTransactions(): Promise<Transaction[]> {
@@ -91,6 +133,7 @@ export async function addTransaction(input: Omit<Transaction, "id">): Promise<Tr
       amount: input.amount,
       category_id: input.categoryId,
       occurred_at: input.timestamp,
+      recurring_payment_id: input.recurringPaymentId,
     })
     .select(TRANSACTION_COLUMNS)
     .single();
@@ -178,5 +221,87 @@ export async function deleteCategory(id: string, reassignTo = "diger"): Promise<
     .eq("category_id", id);
   if (reassignError) throw reassignError;
   const { error } = await supabase.from("categories").delete().eq("id", id);
+  if (error) throw error;
+}
+
+// Düzenli Ödemeler — Taksit ve Abonelik (18 Eylül 2026 eklentisi, PRD 5.6,
+// Teknik Analiz Bölüm 5.14).
+export async function fetchRecurringPayments(): Promise<RecurringPayment[]> {
+  return withClockSkewRetry(async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("recurring_payments")
+      .select(RECURRING_PAYMENT_COLUMNS)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data ?? []).map(rowToRecurringPayment);
+  });
+}
+
+// Tanımlama akışında (page.tsx), bu çağrıyla AYNI anda bugünün tarihiyle bir
+// ilk transaction da elle oluşturulur (bkz. AddExpenseSheet). installmentsPaid
+// ve lastGeneratedDate BURADA, tek bir INSERT'te "bugün" ile set edilir —
+// computeRecurringGenerations ilk ayı asla tekrar üretmesin diye (Teknik
+// Analiz 5.14). Bu iki yazma (recurring_payments + transactions) atomik
+// değildir; ama checkAndGenerateRecurringPayments'taki gibi bir çift-üretim
+// riski taşımaz (aynı ay için en fazla bir kez çağrılan, tekilleştirmeye
+// gerek duymayan bir oluşturma akışı) — atomik RPC bilinçli olarak sadece
+// otomatik üretim tarafında kullanılıyor.
+export async function addRecurringPayment(input: {
+  type: RecurringPaymentType;
+  title: string;
+  categoryId: string;
+  amount: number;
+  startDate: string;
+  installmentCount: number | null;
+  paymentDay: number | null;
+  installmentsPaid: number;
+  lastGeneratedDate: string;
+}): Promise<RecurringPayment> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("recurring_payments")
+    .insert({
+      type: input.type,
+      title: input.title,
+      category_id: input.categoryId,
+      amount: input.amount,
+      start_date: input.startDate,
+      installment_count: input.installmentCount,
+      payment_day: input.paymentDay,
+      installments_paid: input.installmentsPaid,
+      last_generated_date: input.lastGeneratedDate,
+    })
+    .select(RECURRING_PAYMENT_COLUMNS)
+    .single();
+  if (error) throw error;
+  return rowToRecurringPayment(data);
+}
+
+// Yalnızca tutar/ödeme günü güncellenebilir — geçmiş transaction'lara
+// dokunulmaz, sadece gelecekteki üretim bu yeni değerleri kullanır.
+export async function updateRecurringPayment(
+  id: string,
+  input: { amount: number; paymentDay: number | null }
+): Promise<RecurringPayment> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from("recurring_payments")
+    .update({ amount: input.amount, payment_day: input.paymentDay })
+    .eq("id", id)
+    .select(RECURRING_PAYMENT_COLUMNS)
+    .single();
+  if (error) throw error;
+  return rowToRecurringPayment(data);
+}
+
+// İptal bir DELETE değil UPDATE'tir (status='cancelled') — geçmiş
+// transaction'lar hiç etkilenmez, sadece gelecekteki üretim durur.
+export async function cancelRecurringPayment(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from("recurring_payments")
+    .update({ status: "cancelled" })
+    .eq("id", id);
   if (error) throw error;
 }
