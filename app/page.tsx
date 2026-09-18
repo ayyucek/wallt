@@ -50,6 +50,7 @@ import {
   addCategory,
   addRecurringPayment,
   addTransaction,
+  checkAndGenerateRecurringPayments,
   deleteCategory,
   deleteTransaction,
   fetchCategories,
@@ -127,9 +128,28 @@ export default function Home() {
           fetchRecurringPayments(),
         ]);
         if (cancelled) return;
-        setTransactions(txs);
-        setCategories(cats);
-        setRecurringPayments(recurring);
+
+        // Açılışta bir kez: kaçırılan taksit/abonelik ayları var mı kontrol
+        // edilir (Faz 3, Teknik Analiz 5.14). Üretim olduysa transactions ve
+        // recurring_payments güncel id/alanlarla yeniden fetch edilir — RPC
+        // void döndüğü için üretilen kayıtları başka türlü öğrenemeyiz.
+        const didGenerate = await checkAndGenerateRecurringPayments(recurring);
+        if (cancelled) return;
+
+        if (didGenerate) {
+          const [freshTxs, freshRecurring] = await Promise.all([
+            fetchTransactions(),
+            fetchRecurringPayments(),
+          ]);
+          if (cancelled) return;
+          setTransactions(freshTxs);
+          setCategories(cats);
+          setRecurringPayments(freshRecurring);
+        } else {
+          setTransactions(txs);
+          setCategories(cats);
+          setRecurringPayments(recurring);
+        }
       } catch (err) {
         if (cancelled) return;
         setLoadError(errorMessage(err));

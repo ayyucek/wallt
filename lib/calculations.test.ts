@@ -4,6 +4,7 @@ import {
   buildCumulativeDateMap,
   compareBarData,
   compareParetoData,
+  computeRecurringGenerations,
   diffPercent,
   filterByRange,
   getFrequentExpenses,
@@ -18,7 +19,7 @@ import {
   txDateStr,
   withSavingSegments,
 } from "./calculations";
-import type { Category, Transaction } from "./types";
+import type { Category, RecurringPayment, Transaction } from "./types";
 
 const categories: Category[] = [
   { id: "yemek", name: "Yemek", color: "#FF7A6B" },
@@ -36,6 +37,23 @@ function tx(overrides: Partial<Transaction>): Transaction {
     categoryId: "yemek",
     timestamp: new Date().toISOString(),
     recurringPaymentId: null,
+    ...overrides,
+  };
+}
+
+function recurringPayment(overrides: Partial<RecurringPayment>): RecurringPayment {
+  return {
+    id: "rp",
+    type: "installment",
+    title: "Telefon taksiti",
+    categoryId: "yemek",
+    amount: 100,
+    startDate: "2026-01-18",
+    installmentCount: 12,
+    installmentsPaid: 1,
+    paymentDay: null,
+    status: "active",
+    lastGeneratedDate: "2026-01-18",
     ...overrides,
   };
 }
@@ -489,5 +507,74 @@ describe("getTopCategoriesByUsage", () => {
 
   it("veri yokken boş dizi döner", () => {
     expect(getTopCategoriesByUsage([], "expense")).toEqual([]);
+  });
+});
+
+describe("computeRecurringGenerations", () => {
+  it("henüz vadesi gelmemişse (bu ay içindeki gün geçmediyse) üretim yapmaz", () => {
+    const payment = recurringPayment({ startDate: "2026-01-18", lastGeneratedDate: "2026-01-18" });
+    const result = computeRecurringGenerations(payment, new Date(2026, 1, 10)); // 10 Şubat
+    expect(result).toEqual([]);
+  });
+
+  it("bu ayki ödeme günü geldiyse tek bir kayıt üretir", () => {
+    const payment = recurringPayment({ startDate: "2026-01-18", lastGeneratedDate: "2026-01-18" });
+    const result = computeRecurringGenerations(payment, new Date(2026, 1, 18)); // 18 Şubat
+    expect(result).toEqual([{ date: "2026-02-18", installmentsPaidAfter: 2, completesPayment: false }]);
+  });
+
+  it("kaçırılan ay sayısı kalan taksit sayısından fazlaysa fazlasını üretmez, tam kalan kadar üretip completed olarak keser", () => {
+    // installmentCount=3, installmentsPaid=1 (2 taksit kaldı), last_generated_date
+    // Ocak — Şubat'tan Temmuz'a kadar 6 ay kaçırılmış olsa bile yalnızca 2
+    // kayıt (Şubat, Mart) üretilmeli; Nisan-Temmuz ASLA üretilmemeli.
+    const payment = recurringPayment({
+      installmentCount: 3,
+      installmentsPaid: 1,
+      startDate: "2026-01-18",
+      lastGeneratedDate: "2026-01-18",
+    });
+    const result = computeRecurringGenerations(payment, new Date(2026, 7, 1)); // 1 Ağustos
+    expect(result).toEqual([
+      { date: "2026-02-18", installmentsPaidAfter: 2, completesPayment: false },
+      { date: "2026-03-18", installmentsPaidAfter: 3, completesPayment: true },
+    ]);
+  });
+
+  it("payment_day ayın gün sayısından büyükse (31 gibi) o ayın son gününe kırpar — abonelik, birden çok ay", () => {
+    // paymentDay=31: Şubat 2026 (artık yıl değil) 28 çeker, Mart 31'i tam kullanır,
+    // Nisan'ın 31'i henüz gelmemiş (Nisan'ın 30'u bile today'den sonra) — üretilmez.
+    const payment = recurringPayment({
+      type: "subscription",
+      installmentCount: null,
+      paymentDay: 31,
+      startDate: "2026-01-05",
+      lastGeneratedDate: "2026-01-05",
+    });
+    const result = computeRecurringGenerations(payment, new Date(2026, 3, 15)); // 15 Nisan
+    expect(result).toEqual([
+      { date: "2026-02-28", installmentsPaidAfter: 2, completesPayment: false },
+      { date: "2026-03-31", installmentsPaidAfter: 3, completesPayment: false },
+    ]);
+  });
+
+  it("taksitte de gün kırpması uygulanır ve artık yılda Şubat 29'u kullanır", () => {
+    const payment = recurringPayment({
+      installmentCount: 99,
+      startDate: "2028-01-31",
+      lastGeneratedDate: "2028-01-31",
+    });
+    const result = computeRecurringGenerations(payment, new Date(2028, 1, 29)); // 29 Şubat 2028 (artık yıl)
+    expect(result).toEqual([{ date: "2028-02-29", installmentsPaidAfter: 2, completesPayment: false }]);
+  });
+
+  it("status active değilse (completed/cancelled) hiç üretim yapmaz", () => {
+    const payment = recurringPayment({ status: "cancelled", lastGeneratedDate: "2026-01-18" });
+    const result = computeRecurringGenerations(payment, new Date(2026, 5, 1));
+    expect(result).toEqual([]);
+  });
+
+  it("last_generated_date yoksa üretim yapmaz", () => {
+    const payment = recurringPayment({ lastGeneratedDate: null });
+    expect(computeRecurringGenerations(payment, new Date(2026, 5, 1))).toEqual([]);
   });
 });

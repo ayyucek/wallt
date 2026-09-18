@@ -8,6 +8,7 @@ import type {
   FrequentExpense,
   ParetoEntry,
   RadarEntry,
+  RecurringPayment,
   Transaction,
   TransactionType,
 } from "./types";
@@ -414,4 +415,87 @@ export function buildCumulativeDateMap(
     }
     return formatDate(buckets[buckets.length - 1]?.end ?? e);
   };
+}
+
+// Düzenli Ödemeler — otomatik/backfill üretim (Faz 3, PRD 5.6, Teknik Analiz
+// 5.14). `monthAnchor`'ın ayında `day` mevcut değilse (örn. 31 Ocak → Şubat)
+// o ayın son gününe çeker — endOfMonth zaten mevcut helper'ı kullanır, yeni
+// bir tarih kütüphanesi eklenmedi.
+function daysInMonth(monthAnchor: Date): number {
+  return endOfMonth(monthAnchor).getDate();
+}
+
+function clampDayToMonth(monthAnchor: Date, day: number): Date {
+  const clampedDay = Math.min(day, daysInMonth(monthAnchor));
+  return new Date(monthAnchor.getFullYear(), monthAnchor.getMonth(), clampedDay);
+}
+
+export interface RecurringGeneration {
+  date: string; // "YYYY-MM-DD"
+  installmentsPaidAfter: number;
+  completesPayment: boolean;
+}
+
+// Saf fonksiyon: DB'ye dokunmaz, last_generated_date'ten today'e kadar
+// kaçırılan ayları hesaplar. checkAndGenerateRecurringPayments (storage.ts)
+// bu listeyi tek bir atomik RPC çağrısına p_occurred_dates olarak geçirir —
+// insert edilecek transaction sayısı ile recurring_payments güncellemesi
+// (installments_paid/last_generated_date/status) böylece ya hep ya hiç
+// yazılır (Teknik Analiz 5.14, kritik nokta #1).
+//
+// Gün seçimi: "installment" için start_date'in günü, "subscription" için
+// payment_day kullanılır; her ikisi de clampDayToMonth ile o ayın son gününü
+// AŞMAYACAK şekilde kırpılır (kritik nokta #2 — örn. payment_day=31, Şubat'ta
+// 28/29'a düşer).
+//
+// Taksit tavanı: installment_count'a ulaşıldığı an döngü durur — kaçırılan ay
+// sayısı kalan taksit sayısından fazla olsa bile FAZLASI ÜRETİLMEZ, tam kalan
+// kadar üretilip son kayıt completesPayment=true ile işaretlenir (kritik
+// nokta #3, kullanıcı tarafından özellikle istenen test senaryosu).
+export function computeRecurringGenerations(
+  payment: RecurringPayment,
+  today: Date = new Date()
+): RecurringGeneration[] {
+  if (payment.status !== "active" || !payment.lastGeneratedDate) return [];
+
+  const day =
+    payment.type === "subscription" && payment.paymentDay !== null
+      ? payment.paymentDay
+      : new Date(`${payment.startDate}T00:00:00`).getDate();
+
+  const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const generations: RecurringGeneration[] = [];
+  let installmentsPaid = payment.installmentsPaid;
+  // addMonths(d, n) gün numarasını korur (new Date(y, m+n, d)) — lastGeneratedDate
+  // ayın 31'i gibi bir günse ve hedef ay daha kısaysa taşıp bir sonraki aya
+  // geçebilir (örn. 31 Ocak + 1 ay → "31 Şubat" JS'te 2-3 Mart'a döner, Şubat
+  // tamamen atlanır). Bu yüzden cursor HER ZAMAN ayın 1'ine ankorlanır
+  // (startOfMonth), gün kırpması aşağıda clampDayToMonth ile ayrıca yapılır.
+  let cursor = addMonths(startOfMonth(new Date(`${payment.lastGeneratedDate}T00:00:00`)), 1);
+
+  while (startOfMonth(cursor) <= startOfMonth(todayLocal)) {
+    if (payment.type === "installment" && payment.installmentCount !== null) {
+      if (installmentsPaid >= payment.installmentCount) break;
+    }
+
+    const occurredDate = clampDayToMonth(cursor, day);
+    if (occurredDate > todayLocal) break;
+
+    installmentsPaid += 1;
+    const completesPayment =
+      payment.type === "installment" &&
+      payment.installmentCount !== null &&
+      installmentsPaid >= payment.installmentCount;
+
+    generations.push({
+      date: toISODate(occurredDate),
+      installmentsPaidAfter: installmentsPaid,
+      completesPayment,
+    });
+
+    if (completesPayment) break;
+    cursor = addMonths(cursor, 1);
+  }
+
+  return generations;
 }

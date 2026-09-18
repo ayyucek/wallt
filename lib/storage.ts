@@ -1,3 +1,4 @@
+import { computeRecurringGenerations } from "./calculations";
 import { DEFAULT_CATEGORIES } from "./categories";
 import { createClient } from "./supabase/client";
 import type {
@@ -304,4 +305,41 @@ export async function cancelRecurringPayment(id: string): Promise<void> {
     .update({ status: "cancelled" })
     .eq("id", id);
   if (error) throw error;
+}
+
+// Otomatik/backfill üretim (Faz 3, PRD 5.6, Teknik Analiz 5.14) — uygulama
+// açılışında bir kez çağrılır. Her düzenli ödeme için computeRecurringGenerations
+// (saf fonksiyon, lib/calculations.ts) kaçırılan ayları hesaplar; sonuç boş
+// değilse migration'daki generate_recurring_payment_transactions RPC'sine tek
+// çağrıda yazılır. Bu RPC Postgres'te TEK bir implicit transaction olarak
+// çalışır — transaction insert'leri VE recurring_payments güncellemesi
+// (installments_paid/last_generated_date/status) ya hep birlikte yazılır ya
+// hiç yazılmaz; biri başarısız olursa diğeri de otomatik geri alınır. RPC
+// void döndüğünden üretilen transaction id'lerini geri vermez — bu yüzden
+// true dönerse çağıran (page.tsx) transactions ve recurring_payments'ı
+// yeniden fetch ederek güncel id'lerle taze state kurar.
+export async function checkAndGenerateRecurringPayments(
+  recurringPayments: RecurringPayment[],
+  today: Date = new Date()
+): Promise<boolean> {
+  const supabase = createClient();
+  let didGenerate = false;
+
+  for (const payment of recurringPayments) {
+    const generations = computeRecurringGenerations(payment, today);
+    if (generations.length === 0) continue;
+
+    const last = generations[generations.length - 1];
+    const { error } = await supabase.rpc("generate_recurring_payment_transactions", {
+      p_payment_id: payment.id,
+      p_occurred_dates: generations.map((g) => g.date),
+      p_new_installments_paid: last.installmentsPaidAfter,
+      p_new_last_generated_date: last.date,
+      p_new_status: last.completesPayment ? "completed" : "active",
+    });
+    if (error) throw error;
+    didGenerate = true;
+  }
+
+  return didGenerate;
 }
