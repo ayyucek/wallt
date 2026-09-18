@@ -1,10 +1,15 @@
 import { SAVING_COLOR } from "@/lib/categories";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import type { Category, Transaction } from "@/lib/types";
+import type { Category, RecurringPayment, Transaction } from "@/lib/types";
 
 interface TransactionListProps {
   transactions: Transaction[];
   categories: Category[];
+  // Düzenli Ödemeler rozeti (Faz 4, PRD 5.6, Teknik Analiz 5.14) — sayfa
+  // state'inde zaten duran liste, transaction.recurringPaymentId üzerinden
+  // client-side eşleştirilir. Her transaction için AYRI bir DB sorgusu
+  // AÇILMAZ (kasıtlı N+1 önleme).
+  recurringPayments?: RecurringPayment[];
   onRowClick?: (transaction: Transaction) => void;
 }
 
@@ -15,7 +20,12 @@ interface TransactionListProps {
 // 13 Eylül 2026 eklentisi: satıra dokunmak, düzenle/sil aksiyon sheet'ini
 // açar (bkz. TransactionActionsSheet.tsx) — kalıcı ikon/swipe yerine tercih
 // edildi, satırları zaten yoğun olan listede sade tutar.
-export default function TransactionList({ transactions, categories, onRowClick }: TransactionListProps) {
+export default function TransactionList({
+  transactions,
+  categories,
+  recurringPayments = [],
+  onRowClick,
+}: TransactionListProps) {
   if (transactions.length === 0) {
     return <p className="text-sm text-muted">Henüz harcama yok.</p>;
   }
@@ -26,6 +36,14 @@ export default function TransactionList({ transactions, categories, onRowClick }
         const cat = categories.find((c) => c.id === t.categoryId);
         const saving = t.type === "saving";
         const dotColor = saving ? SAVING_COLOR : cat?.color ?? "#888888";
+        const recurring = t.recurringPaymentId
+          ? recurringPayments.find((r) => r.id === t.recurringPaymentId)
+          : undefined;
+        const recurringLabel = recurring
+          ? recurring.type === "installment"
+            ? `Taksit ${recurring.installmentsPaid}/${recurring.installmentCount}`
+            : "Abonelik"
+          : null;
         return (
           <button
             type="button"
@@ -50,6 +68,11 @@ export default function TransactionList({ transactions, categories, onRowClick }
               {saving && (
                 <span className="ml-1 rounded-pill bg-saving/15 px-1.5 py-0.5 text-[9.5px] font-bold text-saving">
                   Tasarruf
+                </span>
+              )}
+              {recurringLabel && (
+                <span className="ml-1 rounded-pill bg-brand-start/15 px-1.5 py-0.5 text-[9.5px] font-bold text-brand-start">
+                  🔁 {recurringLabel}
                 </span>
               )}
             </div>

@@ -528,6 +528,7 @@ export default function Home() {
                   <TransactionList
                     transactions={hareketlerFiltered}
                     categories={categories}
+                    recurringPayments={recurringPayments}
                     onRowClick={setActionsSheetTransaction}
                   />
                 </section>
