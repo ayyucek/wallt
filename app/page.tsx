@@ -8,7 +8,7 @@ import InstallHint from "@/components/pwa/InstallHint";
 import BottomTabBar, { type TabKey } from "@/components/layout/BottomTabBar";
 import Sidebar from "@/components/layout/Sidebar";
 import BottomSheet from "@/components/sheets/BottomSheet";
-import AddExpenseSheet from "@/components/sheets/AddExpenseSheet";
+import AddExpenseSheet, { type RecurringPaymentDraft } from "@/components/sheets/AddExpenseSheet";
 import DateRangeSheet from "@/components/sheets/DateRangeSheet";
 import ExportSheet from "@/components/sheets/ExportSheet";
 import CategoryManagementSheet from "@/components/sheets/CategoryManagementSheet";
@@ -48,16 +48,25 @@ import {
 import { formatCurrency, formatRangeLabel } from "@/lib/format";
 import {
   addCategory,
+  addRecurringPayment,
   addTransaction,
   deleteCategory,
   deleteTransaction,
   fetchCategories,
+  fetchRecurringPayments,
   fetchTransactions,
   updateCategory,
   updateTransaction,
 } from "@/lib/storage";
 import { createClient } from "@/lib/supabase/client";
-import type { Category, DateRange, FrequentExpense, Transaction, TransactionType } from "@/lib/types";
+import type {
+  Category,
+  DateRange,
+  FrequentExpense,
+  RecurringPayment,
+  Transaction,
+  TransactionType,
+} from "@/lib/types";
 
 function todayStr(): string {
   const d = new Date();
@@ -103,6 +112,7 @@ export default function Home() {
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categories, setCategories] = useState<Category[]>(DEFAULT_CATEGORIES);
+  const [recurringPayments, setRecurringPayments] = useState<RecurringPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -111,10 +121,15 @@ export default function Home() {
 
     async function load() {
       try {
-        const [txs, cats] = await Promise.all([fetchTransactions(), fetchCategories()]);
+        const [txs, cats, recurring] = await Promise.all([
+          fetchTransactions(),
+          fetchCategories(),
+          fetchRecurringPayments(),
+        ]);
         if (cancelled) return;
         setTransactions(txs);
         setCategories(cats);
+        setRecurringPayments(recurring);
       } catch (err) {
         if (cancelled) return;
         setLoadError(errorMessage(err));
@@ -327,6 +342,43 @@ export default function Home() {
         ? `Tasarruf kaydedildi — ${formatCurrency(input.amount)}`
         : `"${input.title}" eklendi — ${formatCurrency(input.amount)}`
     );
+  }
+
+  // Düzenli ödeme tanımlama (Faz 2, PRD 5.6, Teknik Analiz 5.14) — ilk taksit/
+  // abonelik dönemi burada elle oluşturulur: hem recurring_payments satırı hem
+  // "bugünün" (startDate) transaction'ı tek kullanıcı etkileşiminde yazılır.
+  // last_generated_date bilerek startDate'e (bugüne) set edilir ki Faz 3'teki
+  // otomatik üretim bu ilk dönemi asla tekrar üretmesin.
+  async function handleSubmitRecurring(input: RecurringPaymentDraft) {
+    const paymentDay =
+      input.type === "subscription" ? parseInt(input.startDate.slice(8, 10), 10) : null;
+    const installmentsPaid = input.type === "installment" ? 1 : 0;
+
+    const recurringPayment = await addRecurringPayment({
+      type: input.type,
+      title: input.title,
+      categoryId: input.categoryId,
+      amount: input.amount,
+      startDate: input.startDate,
+      installmentCount: input.installmentCount,
+      paymentDay,
+      installmentsPaid,
+      lastGeneratedDate: input.startDate,
+    });
+    setRecurringPayments((prev) => [...prev, recurringPayment]);
+
+    const tx = await addTransaction({
+      type: "expense",
+      title: input.title,
+      description: input.description,
+      amount: input.amount,
+      categoryId: input.categoryId,
+      timestamp: input.timestamp,
+      recurringPaymentId: recurringPayment.id,
+    });
+    setTransactions((prev) => sortByTimestampDesc([...prev, tx]));
+    setAddSheetOpen(false);
+    setToast(`"${input.title}" düzenli ödeme olarak eklendi — ${formatCurrency(input.amount)}`);
   }
 
   function openEditSheet(transaction: Transaction) {
@@ -584,6 +636,7 @@ export default function Home() {
           editingTransaction={editingTransaction}
           frequentExpensesByType={frequentExpensesByType}
           onSubmit={handleSubmitTransaction}
+          onSubmitRecurring={handleSubmitRecurring}
           onAddCategory={handleAddCategory}
           onClose={() => setAddSheetOpen(false)}
         />

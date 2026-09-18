@@ -3,10 +3,31 @@
 import { useState, type FormEvent } from "react";
 import { Check, Plus } from "lucide-react";
 import { CUSTOM_PALETTE } from "@/lib/categories";
-import type { Category, FrequentExpense, Transaction, TransactionType } from "@/lib/types";
+import type {
+  Category,
+  FrequentExpense,
+  RecurringPaymentType,
+  Transaction,
+  TransactionType,
+} from "@/lib/types";
 import ColorPicker from "@/components/ui/ColorPicker";
 import BottomSheet from "./BottomSheet";
 import FrequentChips from "./FrequentChips";
+
+// Düzenli ödeme tanımlama akışı (Faz 2, PRD 5.6, Teknik Analiz 5.14) —
+// AddExpenseSheet bu şekli page.tsx'e verir, storage.addRecurringPayment'a
+// nasıl eşleneceğine (payment_day türetimi, installmentsPaid başlangıcı vb.)
+// page.tsx karar verir; bu bileşen sadece formu toplar.
+export interface RecurringPaymentDraft {
+  type: RecurringPaymentType;
+  title: string;
+  description: string;
+  categoryId: string;
+  amount: number;
+  startDate: string; // "YYYY-MM-DD", recurring_payments.start_date için
+  timestamp: string; // ISO 8601, ilk transaction'ın occurred_at'i için
+  installmentCount: number | null;
+}
 
 interface AddExpenseSheetProps {
   categories: Category[];
@@ -24,6 +45,9 @@ interface AddExpenseSheetProps {
   // göre karar verir (2. revizyon).
   frequentExpensesByType?: Record<TransactionType, FrequentExpense[]>;
   onSubmit: (input: Omit<Transaction, "id">) => Promise<void>;
+  // Düzenli ödeme toggle'ı açıkken submit bu prop'a yönlenir (Faz 2).
+  // Yalnızca yeni kayıt ekleme modunda (editingTransaction yokken) kullanılır.
+  onSubmitRecurring?: (input: RecurringPaymentDraft) => Promise<void>;
   onAddCategory: (name: string, color: string) => Promise<Category>;
   onClose: () => void;
 }
@@ -51,6 +75,7 @@ export default function AddExpenseSheet({
   editingTransaction,
   frequentExpensesByType,
   onSubmit,
+  onSubmitRecurring,
   onAddCategory,
   onClose,
 }: AddExpenseSheetProps) {
@@ -73,9 +98,22 @@ export default function AddExpenseSheet({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Düzenli ödeme toggle'ı (Faz 2) — yalnızca yeni harcama eklerken anlamlı,
+  // bu yüzden isRecurring editingTransaction varken hiç true olamaz (toggle
+  // aşağıda o durumda zaten render edilmiyor).
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringType, setRecurringType] = useState<RecurringPaymentType>("installment");
+  const [installmentCount, setInstallmentCount] = useState("");
+
   const isSaving = entryType === "saving";
   const parsedAmount = parseFloat(amount);
-  const canSubmit = Boolean(amount) && parsedAmount > 0 && title.trim() !== "" && dateTimeValue;
+  const parsedInstallmentCount = parseInt(installmentCount, 10);
+  const canSubmitRecurring =
+    !isRecurring ||
+    (recurringType === "subscription" ||
+      (Boolean(installmentCount) && Number.isInteger(parsedInstallmentCount) && parsedInstallmentCount >= 1));
+  const canSubmit =
+    Boolean(amount) && parsedAmount > 0 && title.trim() !== "" && Boolean(dateTimeValue) && canSubmitRecurring;
 
   // Chip'e dokununca başlık/tutar/kategori/tip formu doldurur — tarih HİÇ
   // dokunulmaz, her zaman "şu an" kalır (bkz. PRD 5.1.2). Alanlar normal
@@ -114,17 +152,32 @@ export default function AddExpenseSheet({
     setError(null);
     setSubmitting(true);
     try {
-      await onSubmit({
-        type: entryType,
-        title: title.trim(),
-        description: description.trim(),
-        amount: parsedAmount,
-        categoryId: selectedCategoryId,
-        timestamp: new Date(dateTimeValue).toISOString(),
-        // Düzenlenen kayıt bir düzenli ödemeden geldiyse bu form onu koparmaz
-        // (recurringPaymentId sessizce korunur); brand-new bir kayıtta null.
-        recurringPaymentId: editingTransaction?.recurringPaymentId ?? null,
-      });
+      if (isRecurring && onSubmitRecurring) {
+        await onSubmitRecurring({
+          type: recurringType,
+          title: title.trim(),
+          description: description.trim(),
+          categoryId: selectedCategoryId,
+          amount: parsedAmount,
+          // dateTimeValue "YYYY-MM-DDTHH:MM" formatında ve zaten yerel saat —
+          // ilk 10 karakteri almak txDateStr'daki gibi UTC kaymasından kaçınır.
+          startDate: dateTimeValue.slice(0, 10),
+          timestamp: new Date(dateTimeValue).toISOString(),
+          installmentCount: recurringType === "installment" ? parsedInstallmentCount : null,
+        });
+      } else {
+        await onSubmit({
+          type: entryType,
+          title: title.trim(),
+          description: description.trim(),
+          amount: parsedAmount,
+          categoryId: selectedCategoryId,
+          timestamp: new Date(dateTimeValue).toISOString(),
+          // Düzenlenen kayıt bir düzenli ödemeden geldiyse bu form onu koparmaz
+          // (recurringPaymentId sessizce korunur); brand-new bir kayıtta null.
+          recurringPaymentId: editingTransaction?.recurringPaymentId ?? null,
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Kayıt eklenemedi.");
       setSubmitting(false);
@@ -193,9 +246,88 @@ export default function AddExpenseSheet({
         />
       </div>
 
+      {!isSaving && !editingTransaction && (
+        <div className="rounded-xl bg-surface2 p-3">
+          <button
+            type="button"
+            onClick={() => setIsRecurring((v) => !v)}
+            className="flex w-full items-center justify-between"
+            aria-pressed={isRecurring}
+          >
+            <span className="text-sm font-semibold text-ink">Bu düzenli bir ödeme mi?</span>
+            <span
+              className={`relative h-6 w-11 shrink-0 rounded-pill transition-colors ${
+                isRecurring
+                  ? "bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))]"
+                  : "bg-card"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                  isRecurring ? "translate-x-5" : "translate-x-0.5"
+                }`}
+              />
+            </span>
+          </button>
+
+          {isRecurring && (
+            <div className="mt-3 flex flex-col gap-3">
+              <div className="flex rounded-pill bg-card p-1">
+                <button
+                  type="button"
+                  onClick={() => setRecurringType("installment")}
+                  className={`flex-1 rounded-pill py-1.5 text-xs font-bold transition-colors ${
+                    recurringType === "installment"
+                      ? "bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] text-white"
+                      : "text-muted"
+                  }`}
+                >
+                  Taksit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecurringType("subscription")}
+                  className={`flex-1 rounded-pill py-1.5 text-xs font-bold transition-colors ${
+                    recurringType === "subscription"
+                      ? "bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] text-white"
+                      : "text-muted"
+                  }`}
+                >
+                  Abonelik
+                </button>
+              </div>
+
+              {recurringType === "installment" ? (
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-muted">
+                    Toplam Taksit Sayısı
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={installmentCount}
+                    onChange={(e) => setInstallmentCount(e.target.value.replace(/[^0-9]/g, ""))}
+                    placeholder="örn. 12"
+                    className="w-full rounded-xl bg-card px-3 py-2.5 text-base font-semibold text-ink outline-none"
+                  />
+                </div>
+              ) : (
+                <p className="text-xs font-medium text-muted">
+                  Ödeme günü, aşağıda seçtiğin tarihin günü olarak kaydedilir.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       <div>
         <label className="mb-1.5 block text-xs font-semibold text-muted">
-          {isSaving ? "Tasarruf Edilen Tutar (₺)" : "Tutar (₺)"}
+          {isSaving
+            ? "Tasarruf Edilen Tutar (₺)"
+            : isRecurring && recurringType === "installment"
+              ? "Aylık Taksit Tutarı (₺)"
+              : "Tutar (₺)"}
         </label>
         <input
           type="text"
