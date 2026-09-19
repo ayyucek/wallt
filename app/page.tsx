@@ -419,6 +419,22 @@ export default function Home() {
     setTransactions((prev) => sortByTimestampDesc([...prev, tx]));
     setAddSheetOpen(false);
     setToast(`"${input.title}" düzenli ödeme olarak eklendi — ${formatCurrency(input.amount)}`);
+
+    // Geçmiş tarihli tanımlamada (örn. 4 ay önceki bir taksit) kaçırılan
+    // aylar, uygulama yeniden açılmayı beklemeden hemen işlenir. Kayıt ve ilk
+    // transaction zaten yazıldığı için burada bir hata formu başarısız
+    // göstermemeli — üretim bir sonraki açılışta zaten yeniden denenir.
+    try {
+      const didGenerate = await checkAndGenerateRecurringPayments([recurringPayment]);
+      if (!didGenerate) return;
+      const [freshTxs, freshRecurring] = await Promise.all([fetchTransactions(), fetchRecurringPayments()]);
+      setTransactions(freshTxs);
+      setRecurringPayments(freshRecurring);
+      const backfilled = freshTxs.filter((t) => t.recurringPaymentId === recurringPayment.id).length - 1;
+      setToast(`"${input.title}" eklendi — geçmiş ${backfilled} dönem de otomatik işlendi`);
+    } catch (err) {
+      console.warn("[wallt] Geçmiş dönemler şimdi işlenemedi, açılışta tekrar denenecek.", err);
+    }
   }
 
   function openEditSheet(transaction: Transaction) {
