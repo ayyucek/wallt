@@ -206,8 +206,12 @@ function endOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0);
 }
 
+// Hedef ayda gün yoksa (örn. 30 Kasım + 3 ay → "30 Şubat") JS Date bir sonraki
+// aya taşardı; gün, hedef ayın son gününe kırpılır.
 function addMonths(d: Date, n: number): Date {
-  return new Date(d.getFullYear(), d.getMonth() + n, d.getDate());
+  const target = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const lastDay = endOfMonth(target).getDate();
+  return new Date(target.getFullYear(), target.getMonth(), Math.min(d.getDate(), lastDay));
 }
 
 function toISODate(d: Date): string {

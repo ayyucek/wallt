@@ -52,8 +52,14 @@ export default function RecurringPaymentsManagementSheet({
   async function handleSave(payment: RecurringPayment) {
     const amount = parseFloat(editAmount);
     if (!(amount > 0)) return;
+    // 1–31 dışı bir gün (0, 99 vb.) DB'ye yazılmasın.
+    const parsedDay = parseInt(editPaymentDay, 10);
     const paymentDay =
-      payment.type === "subscription" ? parseInt(editPaymentDay, 10) || payment.paymentDay : null;
+      payment.type === "subscription"
+        ? parsedDay >= 1 && parsedDay <= 31
+          ? parsedDay
+          : payment.paymentDay
+        : null;
     setSubmitting(true);
     setError(null);
     try {

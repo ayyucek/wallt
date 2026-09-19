@@ -221,6 +221,13 @@ export async function deleteCategory(id: string, reassignTo = "diger"): Promise<
     .update({ category_id: reassignTo })
     .eq("category_id", id);
   if (reassignError) throw reassignError;
+  // Düzenli ödemeler de kategoriye bağlı: taşınmazsa gelecekteki otomatik
+  // üretim silinmiş kategori id'siyle (referanssız) transaction yazardı.
+  const { error: recurringReassignError } = await supabase
+    .from("recurring_payments")
+    .update({ category_id: reassignTo })
+    .eq("category_id", id);
+  if (recurringReassignError) throw recurringReassignError;
   const { error } = await supabase.from("categories").delete().eq("id", id);
   if (error) throw error;
 }
@@ -258,6 +265,7 @@ export async function addRecurringPayment(input: {
   paymentDay: number | null;
   installmentsPaid: number;
   lastGeneratedDate: string;
+  status?: RecurringPaymentStatus;
 }): Promise<RecurringPayment> {
   const supabase = createClient();
   const { data, error } = await supabase
@@ -272,11 +280,20 @@ export async function addRecurringPayment(input: {
       payment_day: input.paymentDay,
       installments_paid: input.installmentsPaid,
       last_generated_date: input.lastGeneratedDate,
+      status: input.status ?? "active",
     })
     .select(RECURRING_PAYMENT_COLUMNS)
     .single();
   if (error) throw error;
   return rowToRecurringPayment(data);
+}
+
+// Tanımlama akışında ilk transaction yazılamazsa, kayıtsız kalan (ilk ayı hiç
+// üretilmeyecek) düzenli ödemeyi geri almak için kullanılır.
+export async function deleteRecurringPayment(id: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from("recurring_payments").delete().eq("id", id);
+  if (error) throw error;
 }
 
 // Yalnızca tutar/ödeme günü güncellenebilir — geçmiş transaction'lara
@@ -323,23 +340,33 @@ export async function checkAndGenerateRecurringPayments(
   today: Date = new Date()
 ): Promise<boolean> {
   const supabase = createClient();
-  let didGenerate = false;
 
-  for (const payment of recurringPayments) {
-    const generations = computeRecurringGenerations(payment, today);
-    if (generations.length === 0) continue;
+  // Ödemeler birbirinden bağımsız olduğundan RPC'ler paralel çalışır; biri
+  // başarısız olsa bile diğerlerinin yazımı sürer ve çağıran güncel veriyi
+  // yeniden çeker (tek bir bozuk kayıt tüm uygulamanın açılışını engellemez).
+  const results = await Promise.allSettled(
+    recurringPayments.map(async (payment) => {
+      const generations = computeRecurringGenerations(payment, today);
+      if (generations.length === 0) return false;
 
-    const last = generations[generations.length - 1];
-    const { error } = await supabase.rpc("generate_recurring_payment_transactions", {
-      p_payment_id: payment.id,
-      p_occurred_dates: generations.map((g) => g.date),
-      p_new_installments_paid: last.installmentsPaidAfter,
-      p_new_last_generated_date: last.date,
-      p_new_status: last.completesPayment ? "completed" : "active",
-    });
-    if (error) throw error;
-    didGenerate = true;
-  }
+      const last = generations[generations.length - 1];
+      const { error } = await supabase.rpc("generate_recurring_payment_transactions", {
+        p_payment_id: payment.id,
+        p_occurred_dates: generations.map((g) => g.date),
+        p_new_installments_paid: last.installmentsPaidAfter,
+        p_new_last_generated_date: last.date,
+        p_new_status: last.completesPayment ? "completed" : "active",
+      });
+      if (error) throw error;
+      return true;
+    })
+  );
 
-  return didGenerate;
+  results.forEach((r) => {
+    if (r.status === "rejected") {
+      console.warn("[wallt] Düzenli ödeme üretimi başarısız, sonraki açılışta tekrar denenecek.", r.reason);
+    }
+  });
+
+  return results.some((r) => r.status === "fulfilled" && r.value);
 }

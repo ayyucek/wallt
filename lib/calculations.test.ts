@@ -300,6 +300,8 @@ describe("periodGranularity", () => {
   it(">2 hafta ve ≤3 ay için hafta bazında döner", () => {
     expect(periodGranularity("2026-01-01", "2026-01-16")).toBe("week");
     expect(periodGranularity("2026-01-01", "2026-04-01")).toBe("week");
+    // 30 Kasım + 3 ay "30 Şubat" değil, Şubat'ın son günüdür (taşma yok).
+    expect(periodGranularity("2026-11-30", "2027-03-01")).toBe("month");
   });
 
   it(">3 ay ve ≤12 ay için ay bazında döner", () => {

@@ -30,15 +30,16 @@ export default function TransactionList({
     return <p className="text-sm text-muted">Henüz harcama yok.</p>;
   }
 
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const recurringById = new Map(recurringPayments.map((r) => [r.id, r]));
+
   return (
     <div>
       {transactions.map((t) => {
-        const cat = categories.find((c) => c.id === t.categoryId);
+        const cat = categoryById.get(t.categoryId);
         const saving = t.type === "saving";
         const dotColor = saving ? SAVING_COLOR : cat?.color ?? "#888888";
-        const recurring = t.recurringPaymentId
-          ? recurringPayments.find((r) => r.id === t.recurringPaymentId)
-          : undefined;
+        const recurring = t.recurringPaymentId ? recurringById.get(t.recurringPaymentId) : undefined;
         const recurringLabel = recurring
           ? recurring.type === "installment"
             ? `Taksit ${recurring.installmentsPaid}/${recurring.installmentCount}`

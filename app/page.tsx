@@ -55,6 +55,7 @@ import {
   cancelRecurringPayment,
   checkAndGenerateRecurringPayments,
   deleteCategory,
+  deleteRecurringPayment,
   deleteTransaction,
   fetchCategories,
   fetchRecurringPayments,
@@ -393,6 +394,9 @@ export default function Home() {
     const paymentDay =
       input.type === "subscription" ? parseInt(input.startDate.slice(8, 10), 10) : null;
     const installmentsPaid = input.type === "installment" ? 1 : 0;
+    // Tek taksitlik bir ödemede ilk transaction zaten son taksittir; "active"
+    // kalırsa hiç üretim yapılmadan sonsuza dek aktif görünürdü.
+    const completesImmediately = input.type === "installment" && input.installmentCount === 1;
 
     const recurringPayment = await addRecurringPayment({
       type: input.type,
@@ -404,18 +408,28 @@ export default function Home() {
       paymentDay,
       installmentsPaid,
       lastGeneratedDate: input.startDate,
+      status: completesImmediately ? "completed" : "active",
     });
-    setRecurringPayments((prev) => [...prev, recurringPayment]);
 
-    const tx = await addTransaction({
-      type: "expense",
-      title: input.title,
-      description: input.description,
-      amount: input.amount,
-      categoryId: input.categoryId,
-      timestamp: input.timestamp,
-      recurringPaymentId: recurringPayment.id,
-    });
+    // İki yazma atomik değil: ilk transaction yazılamazsa düzenli ödeme
+    // satırı geri alınır, yoksa ilk ayı hiç üretilmeyen yetim bir kayıt kalır
+    // ve kullanıcının yeniden denemesi çift düzenli ödeme oluştururdu.
+    let tx: Transaction;
+    try {
+      tx = await addTransaction({
+        type: "expense",
+        title: input.title,
+        description: input.description,
+        amount: input.amount,
+        categoryId: input.categoryId,
+        timestamp: input.timestamp,
+        recurringPaymentId: recurringPayment.id,
+      });
+    } catch (err) {
+      await deleteRecurringPayment(recurringPayment.id).catch(() => {});
+      throw err;
+    }
+    setRecurringPayments((prev) => [...prev, recurringPayment]);
     setTransactions((prev) => sortByTimestampDesc([...prev, tx]));
     setAddSheetOpen(false);
     setToast(`"${input.title}" düzenli ödeme olarak eklendi — ${formatCurrency(input.amount)}`);
@@ -476,6 +490,7 @@ export default function Home() {
   async function handleDeleteCategory(id: string): Promise<void> {
     await deleteCategory(id, "diger");
     setTransactions((prev) => prev.map((t) => (t.categoryId === id ? { ...t, categoryId: "diger" } : t)));
+    setRecurringPayments((prev) => prev.map((p) => (p.categoryId === id ? { ...p, categoryId: "diger" } : p)));
     setCategories((prev) => prev.filter((c) => c.id !== id));
   }
 
