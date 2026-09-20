@@ -229,6 +229,7 @@ export default function AddExpenseSheet({
         <input
           type="text"
           value={title}
+          maxLength={100}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={isSaving ? "örn. Kahve almadım" : "örn. Öğle yemeği"}
           className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
@@ -239,6 +240,7 @@ export default function AddExpenseSheet({
         <label className="mb-1.5 block text-xs font-semibold text-muted">Açıklama (opsiyonel)</label>
         <textarea
           value={description}
+          maxLength={500}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Ek not..."
           rows={2}
@@ -422,6 +424,7 @@ export default function AddExpenseSheet({
           <input
             type="text"
             value={newCategoryName}
+            maxLength={40}
             onChange={(e) => setNewCategoryName(e.target.value)}
             placeholder="örn. Spor"
             className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"

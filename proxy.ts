@@ -40,17 +40,20 @@ export async function proxy(request: NextRequest) {
 
   const isPublicPath = PUBLIC_PATHS.includes(request.nextUrl.pathname);
 
-  if (!user && !isPublicPath) {
+  // getUser() token'ı yenilediyse yeni cookie'ler `response` üzerindedir;
+  // redirect yanıtına da taşınmazsa oturum yenilemesi kaybolur ve kullanıcı
+  // bir sonraki istekte sebepsiz yere çıkış yapmış gibi olur.
+  function redirectTo(pathname: string) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+    url.pathname = pathname;
+    url.search = "";
+    const redirect = NextResponse.redirect(url);
+    response.cookies.getAll().forEach((c) => redirect.cookies.set(c));
+    return redirect;
   }
 
-  if (user && isPublicPath) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
+  if (!user && !isPublicPath) return redirectTo("/login");
+  if (user && isPublicPath) return redirectTo("/");
 
   return response;
 }

@@ -1,10 +1,38 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type Mode = "signin" | "signup" | "forgot";
+
+// Kayıt/sıfırlama için minimum şifre uzunluğu. Giriş alanına UYGULANMAZ —
+// eski (6 karakterlik) şifreli mevcut kullanıcıların girişini engellemesin.
+export const MIN_PASSWORD_LENGTH = 8;
+
+// İstemci tarafı yavaşlatma: art arda başarısız denemelerde artan bekleme
+// (brute-force'u ve yanlışlıkla spam'i yavaşlatır). Gerçek koruma Supabase'in
+// sunucu tarafı rate limit'idir; bu yalnızca ek bir katmandır.
+const FREE_ATTEMPTS = 3;
+const MAX_COOLDOWN_SECONDS = 60;
+
+function cooldownFor(failures: number): number {
+  if (failures < FREE_ATTEMPTS) return 0;
+  return Math.min(MAX_COOLDOWN_SECONDS, 2 ** (failures - FREE_ATTEMPTS + 2));
+}
+
+// Supabase'in ham hata metinleri hesabın var/yok olduğunu ya da altyapı
+// ayrıntılarını sızdırabilir; kullanıcıya kontrollü Türkçe mesajlar gösterilir.
+function friendlyAuthError(message: string, mode: Mode): string {
+  const m = message.toLowerCase();
+  if (m.includes("rate limit") || m.includes("too many")) {
+    return "Çok fazla deneme yapıldı. Lütfen biraz bekleyip tekrar dene.";
+  }
+  if (mode === "signin") return "E-posta veya şifre hatalı.";
+  if (m.includes("password")) return `Şifre en az ${MIN_PASSWORD_LENGTH} karakter olmalı.`;
+  if (mode === "signup") return "Kayıt oluşturulamadı. Bilgilerini kontrol edip tekrar dene.";
+  return "İşlem tamamlanamadı, lütfen tekrar dene.";
+}
 
 export default function AuthForm() {
   const router = useRouter();
@@ -14,11 +42,30 @@ export default function AuthForm() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const failures = useRef(0);
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  function registerFailure() {
+    failures.current += 1;
+    setCooldown(cooldownFor(failures.current));
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (loading || cooldown > 0) return;
     setError(null);
     setInfo(null);
+
+    if (mode === "signup" && password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Şifre en az ${MIN_PASSWORD_LENGTH} karakter olmalı.`);
+      return;
+    }
     setLoading(true);
 
     // Ağ hatası (fetch reject) durumunda da loading sıfırlansın ve kullanıcı
@@ -29,9 +76,11 @@ export default function AuthForm() {
       if (mode === "signin") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
-          setError(error.message);
+          registerFailure();
+          setError(friendlyAuthError(error.message, mode));
           return;
         }
+        failures.current = 0;
         router.push("/");
         router.refresh();
         return;
@@ -46,16 +95,20 @@ export default function AuthForm() {
         // yüzden mesaj kasıtlı olarak "eğer bu email'e kayıtlı bir hesap varsa"
         // ifadesiyle belirsiz tutuluyor, hesabın var/yok olduğunu ele vermiyor.
         if (error) {
-          setError(error.message);
+          registerFailure();
+          setError(friendlyAuthError(error.message, mode));
           return;
         }
+        // Başarılı isteklerde de kısa bekleme: sıfırlama e-postası spam'ini önler.
+        setCooldown(30);
         setInfo("Eğer bu email'e kayıtlı bir hesap varsa, şifre sıfırlama bağlantısı gönderildi.");
         return;
       }
 
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
-        setError(error.message);
+        registerFailure();
+        setError(friendlyAuthError(error.message, mode));
         return;
       }
 
@@ -69,8 +122,8 @@ export default function AuthForm() {
 
       setInfo("Kayıt başarılı — e-postana gelen linke tıklayıp hesabını doğruladıktan sonra giriş yapabilirsin.");
       setMode("signin");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Bağlantı hatası, lütfen tekrar dene.");
+    } catch {
+      setError("Bağlantı hatası, lütfen tekrar dene.");
     } finally {
       setLoading(false);
     }
@@ -121,6 +174,7 @@ export default function AuthForm() {
           <input
             type="email"
             required
+            maxLength={254}
             autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -135,7 +189,8 @@ export default function AuthForm() {
             <input
               type="password"
               required
-              minLength={6}
+              minLength={mode === "signup" ? MIN_PASSWORD_LENGTH : undefined}
+              maxLength={128}
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -160,11 +215,13 @@ export default function AuthForm() {
 
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || cooldown > 0}
           className="mt-1 rounded-pill bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-50"
         >
-          {loading
-            ? "..."
+          {cooldown > 0
+            ? `${cooldown} sn bekle`
+            : loading
+              ? "..."
             : mode === "signin"
               ? "Giriş Yap"
               : mode === "signup"

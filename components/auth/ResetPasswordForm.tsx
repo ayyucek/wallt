@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { MIN_PASSWORD_LENGTH } from "./AuthForm";
 
 export default function ResetPasswordForm() {
   const router = useRouter();
@@ -17,6 +18,10 @@ export default function ResetPasswordForm() {
     setMismatchError(null);
     setSessionError(null);
 
+    if (password.length < MIN_PASSWORD_LENGTH) {
+      setMismatchError(`Şifre en az ${MIN_PASSWORD_LENGTH} karakter olmalı.`);
+      return;
+    }
     if (password !== confirmPassword) {
       setMismatchError("Şifreler eşleşmiyor.");
       return;
@@ -24,8 +29,17 @@ export default function ResetPasswordForm() {
 
     setLoading(true);
     const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
-    setLoading(false);
+    let error: { message: string } | null;
+    try {
+      ({ error } = await supabase.auth.updateUser({ password }));
+      // Şifre değişince bu cihaz dışındaki tüm oturumlar kapatılır: hesabı
+      // ele geçirmiş biri eski oturumuyla erişimini sürdüremesin.
+      if (!error) await supabase.auth.signOut({ scope: "others" });
+    } catch {
+      error = { message: "Bağlantı hatası." };
+    } finally {
+      setLoading(false);
+    }
 
     if (error) {
       // Kurtarma bağlantısı geçersiz/süresi dolmuşsa updateUser burada hata
@@ -51,7 +65,8 @@ export default function ResetPasswordForm() {
           <input
             type="password"
             required
-            minLength={6}
+            minLength={MIN_PASSWORD_LENGTH}
+            maxLength={128}
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -64,7 +79,8 @@ export default function ResetPasswordForm() {
           <input
             type="password"
             required
-            minLength={6}
+            minLength={MIN_PASSWORD_LENGTH}
+            maxLength={128}
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
