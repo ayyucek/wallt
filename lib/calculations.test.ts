@@ -10,6 +10,7 @@ import {
   getFrequentExpenses,
   getTopCategoriesByUsage,
   granularityLabel,
+  installmentOrdinals,
   isExpense,
   isSaving,
   paretoData,
@@ -578,5 +579,34 @@ describe("computeRecurringGenerations", () => {
   it("last_generated_date yoksa üretim yapmaz", () => {
     const payment = recurringPayment({ lastGeneratedDate: null });
     expect(computeRecurringGenerations(payment, new Date(2026, 5, 1))).toEqual([]);
+  });
+});
+
+describe("installmentOrdinals", () => {
+  const mk = (id: string, ts: string, rp: string | null): Transaction => ({
+    id,
+    type: "expense",
+    title: "t",
+    description: "",
+    amount: 10,
+    categoryId: "yemek",
+    timestamp: ts,
+    recurringPaymentId: rp,
+  });
+
+  it("her ödeme için transaction'ları kronolojik sırayla 1'den numaralar", () => {
+    const txs = [
+      mk("c", "2026-03-05T10:00:00.000Z", "p1"),
+      mk("a", "2026-01-05T10:00:00.000Z", "p1"),
+      mk("b", "2026-02-05T10:00:00.000Z", "p1"),
+      mk("x", "2026-02-01T10:00:00.000Z", "p2"),
+      mk("n", "2026-02-02T10:00:00.000Z", null),
+    ];
+    const o = installmentOrdinals(txs);
+    expect(o.get("a")).toBe(1);
+    expect(o.get("b")).toBe(2);
+    expect(o.get("c")).toBe(3);
+    expect(o.get("x")).toBe(1);
+    expect(o.has("n")).toBe(false);
   });
 });

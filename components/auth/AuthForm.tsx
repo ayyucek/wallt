@@ -21,54 +21,59 @@ export default function AuthForm() {
     setInfo(null);
     setLoading(true);
 
-    const supabase = createClient();
+    // Ağ hatası (fetch reject) durumunda da loading sıfırlansın ve kullanıcı
+    // bir mesaj görsün diye tüm akış try/catch/finally içinde.
+    try {
+      const supabase = createClient();
 
-    if (mode === "signin") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      setLoading(false);
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+          setError(error.message);
+          return;
+        }
+        router.push("/");
+        router.refresh();
+        return;
+      }
+
+      if (mode === "forgot") {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        // Supabase, email enumeration'ı önlemek için hesap var/yok fark etmeksizin
+        // başarı döner (gerçek bir hesap yoksa sessizce hiçbir mail gitmez) — bu
+        // yüzden mesaj kasıtlı olarak "eğer bu email'e kayıtlı bir hesap varsa"
+        // ifadesiyle belirsiz tutuluyor, hesabın var/yok olduğunu ele vermiyor.
+        if (error) {
+          setError(error.message);
+          return;
+        }
+        setInfo("Eğer bu email'e kayıtlı bir hesap varsa, şifre sıfırlama bağlantısı gönderildi.");
+        return;
+      }
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) {
         setError(error.message);
         return;
       }
-      router.push("/");
-      router.refresh();
-      return;
-    }
 
-    if (mode === "forgot") {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-      setLoading(false);
-      // Supabase, email enumeration'ı önlemek için hesap var/yok fark etmeksizin
-      // başarı döner (gerçek bir hesap yoksa sessizce hiçbir mail gitmez) — bu
-      // yüzden mesaj kasıtlı olarak "eğer bu email'e kayıtlı bir hesap varsa"
-      // ifadesiyle belirsiz tutuluyor, hesabın var/yok olduğunu ele vermiyor.
-      if (error) {
-        setError(error.message);
+      // "Confirm email" kapalıysa signUp() doğrudan geçerli bir session döner —
+      // bu durumda kullanıcıyı e-posta beklemeye zorlamadan direkt içeri alıyoruz.
+      if (data.session) {
+        router.push("/");
+        router.refresh();
         return;
       }
-      setInfo("Eğer bu email'e kayıtlı bir hesap varsa, şifre sıfırlama bağlantısı gönderildi.");
-      return;
-    }
 
-    const { data, error } = await supabase.auth.signUp({ email, password });
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-      return;
+      setInfo("Kayıt başarılı — e-postana gelen linke tıklayıp hesabını doğruladıktan sonra giriş yapabilirsin.");
+      setMode("signin");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Bağlantı hatası, lütfen tekrar dene.");
+    } finally {
+      setLoading(false);
     }
-
-    // "Confirm email" kapalıysa signUp() doğrudan geçerli bir session döner —
-    // bu durumda kullanıcıyı e-posta beklemeye zorlamadan direkt içeri alıyoruz.
-    if (data.session) {
-      router.push("/");
-      router.refresh();
-      return;
-    }
-
-    setInfo("Kayıt başarılı — e-postana gelen linke tıklayıp hesabını doğruladıktan sonra giriş yapabilirsin.");
-    setMode("signin");
   }
 
   function switchMode(next: Mode) {

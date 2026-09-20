@@ -51,7 +51,9 @@ export default function ExportSheet({ rangeStart, rangeEnd, total, categories }:
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      // Hemen revoke etmek Safari'de indirmeyi kesebiliyor; tarayıcıya
+      // indirmeyi başlatması için süre tanı.
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "PDF oluşturulamadı.");
     } finally {

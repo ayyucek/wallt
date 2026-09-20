@@ -40,6 +40,7 @@ import {
   filterByRange,
   getFrequentExpenses,
   getTopCategoriesByUsage,
+  installmentOrdinals,
   isExpense,
   isSaving,
   quickRange,
@@ -239,6 +240,8 @@ export default function Home() {
     });
     return result;
   }, [nonRecurringTransactions]);
+
+  const ordinals = useMemo(() => installmentOrdinals(transactions), [transactions]);
 
   const filtered = useMemo(
     () => filterByRange(transactions, rangeStart, rangeEnd),
@@ -597,6 +600,7 @@ export default function Home() {
                     transactions={hareketlerFiltered}
                     categories={categories}
                     recurringPayments={recurringPayments}
+                    installmentOrdinals={ordinals}
                     onRowClick={setActionsSheetTransaction}
                   />
                 </section>

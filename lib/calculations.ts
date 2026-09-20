@@ -182,6 +182,27 @@ export function getTopCategoriesByUsage(
     .map(([categoryId, v]) => ({ categoryId, count: v.count }));
 }
 
+// Bir düzenli ödemeden üretilen her transaction'ın, o ödemedeki kronolojik
+// sırasını (1-tabanlı) döner: transaction id → sıra. Taksit rozetinin her
+// satırda güncel "installmentsPaid"i değil, satırın kendi taksit numarasını
+// göstermesi için kullanılır. `transactions` filtrelenmemiş tam liste olmalı.
+export function installmentOrdinals(transactions: Transaction[]): Map<string, number> {
+  const byPayment = new Map<string, Transaction[]>();
+  transactions.forEach((t) => {
+    if (!t.recurringPaymentId) return;
+    const list = byPayment.get(t.recurringPaymentId);
+    if (list) list.push(t);
+    else byPayment.set(t.recurringPaymentId, [t]);
+  });
+  const result = new Map<string, number>();
+  byPayment.forEach((list) => {
+    list
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .forEach((t, i) => result.set(t.id, i + 1));
+  });
+  return result;
+}
+
 export type QuickRangeKey = "week" | "lastweek" | "month" | "lastmonth";
 
 function addDays(d: Date, n: number): Date {

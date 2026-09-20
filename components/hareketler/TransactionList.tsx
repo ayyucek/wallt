@@ -10,6 +10,10 @@ interface TransactionListProps {
   // client-side eşleştirilir. Her transaction için AYRI bir DB sorgusu
   // AÇILMAZ (kasıtlı N+1 önleme).
   recurringPayments?: RecurringPayment[];
+  // transaction id → o taksit ödemesindeki sıra numarası (1-tabanlı). Sıra,
+  // filtrelenmemiş tüm işlemlerden hesaplanır (bkz. installmentOrdinals,
+  // lib/calculations.ts); yoksa rozet güncel installmentsPaid'e düşer.
+  installmentOrdinals?: Map<string, number>;
   onRowClick?: (transaction: Transaction) => void;
 }
 
@@ -24,6 +28,7 @@ export default function TransactionList({
   transactions,
   categories,
   recurringPayments = [],
+  installmentOrdinals,
   onRowClick,
 }: TransactionListProps) {
   if (transactions.length === 0) {
@@ -42,7 +47,7 @@ export default function TransactionList({
         const recurring = t.recurringPaymentId ? recurringById.get(t.recurringPaymentId) : undefined;
         const recurringLabel = recurring
           ? recurring.type === "installment"
-            ? `Taksit ${recurring.installmentsPaid}/${recurring.installmentCount}`
+            ? `Taksit ${installmentOrdinals?.get(t.id) ?? recurring.installmentsPaid}/${recurring.installmentCount}`
             : "Abonelik"
           : null;
         return (
