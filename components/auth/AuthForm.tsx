@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import PasswordInput from "./PasswordInput";
 import TurnstileWidget, { TURNSTILE_SITE_KEY } from "./TurnstileWidget";
 
 type Mode = "signin" | "signup" | "forgot";
@@ -209,15 +210,13 @@ export default function AuthForm() {
         {mode !== "forgot" && (
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-muted">Şifre</label>
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={mode === "signup" ? MIN_PASSWORD_LENGTH : undefined}
               maxLength={128}
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl bg-surface2 px-3 py-2.5 text-base font-semibold text-ink outline-none"
               placeholder="••••••••"
             />
           </div>
