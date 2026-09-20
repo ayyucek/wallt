@@ -10,11 +10,12 @@ const supabaseWs = supabaseUrl.replace(/^https:/, "wss:");
 // ve Supabase (auth + veri).
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob:",
-  `connect-src 'self' ${supabaseUrl} ${supabaseWs}`.trim(),
+  `connect-src 'self' ${supabaseUrl} ${supabaseWs} https://challenges.cloudflare.com`.trim(),
+  "frame-src https://challenges.cloudflare.com", // Turnstile CAPTCHA iframe'i
   "worker-src 'self'",
   "manifest-src 'self'",
   "object-src 'none'",

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import TurnstileWidget, { TURNSTILE_SITE_KEY } from "./TurnstileWidget";
 
 type Mode = "signin" | "signup" | "forgot";
 
@@ -43,6 +44,9 @@ export default function AuthForm() {
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const failures = useRef(0);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
+  const captchaRequired = Boolean(TURNSTILE_SITE_KEY);
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
@@ -62,6 +66,12 @@ export default function AuthForm() {
     setError(null);
     setInfo(null);
 
+    if (captchaRequired && !captchaToken) {
+      setError("Lütfen robot olmadığını doğrula.");
+      return;
+    }
+    const token = captchaToken ?? undefined;
+
     if (mode === "signup" && password.length < MIN_PASSWORD_LENGTH) {
       setError(`Şifre en az ${MIN_PASSWORD_LENGTH} karakter olmalı.`);
       return;
@@ -74,7 +84,11 @@ export default function AuthForm() {
       const supabase = createClient();
 
       if (mode === "signin") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+          options: { captchaToken: token },
+        });
         if (error) {
           registerFailure();
           setError(friendlyAuthError(error.message, mode));
@@ -89,6 +103,7 @@ export default function AuthForm() {
       if (mode === "forgot") {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
+          captchaToken: token,
         });
         // Supabase, email enumeration'ı önlemek için hesap var/yok fark etmeksizin
         // başarı döner (gerçek bir hesap yoksa sessizce hiçbir mail gitmez) — bu
@@ -105,7 +120,11 @@ export default function AuthForm() {
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { captchaToken: token },
+      });
       if (error) {
         registerFailure();
         setError(friendlyAuthError(error.message, mode));
@@ -126,6 +145,10 @@ export default function AuthForm() {
       setError("Bağlantı hatası, lütfen tekrar dene.");
     } finally {
       setLoading(false);
+      // Turnstile token'ı tek kullanımlık: başarılı ya da başarısız her
+      // denemeden sonra yeni bir doğrulama gerekir.
+      setCaptchaToken(null);
+      setCaptchaReset((n) => n + 1);
     }
   }
 
@@ -210,12 +233,14 @@ export default function AuthForm() {
           </button>
         )}
 
+        <TurnstileWidget onToken={setCaptchaToken} resetSignal={captchaReset} />
+
         {error && <p className="text-xs font-semibold text-category-saglik">{error}</p>}
         {info && <p className="text-xs font-semibold text-category-market">{info}</p>}
 
         <button
           type="submit"
-          disabled={loading || cooldown > 0}
+          disabled={loading || cooldown > 0 || (captchaRequired && !captchaToken)}
           className="mt-1 rounded-pill bg-[linear-gradient(135deg,var(--color-brand-start),var(--color-brand-end))] py-3 text-sm font-bold text-white shadow-btn-primary disabled:opacity-50"
         >
           {cooldown > 0
